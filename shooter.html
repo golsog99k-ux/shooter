@@ -2,178 +2,118 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🔫 TomatiK Strike 2 - OFFLINE</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>🔫 TomatiK Strike 2 - 3D</title>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
-        body{background:#1a1a2e;overflow:hidden;font-family:Arial;touch-action:manipulation;height:100vh}
+        body{background:#000;overflow:hidden;font-family:Arial;user-select:none;touch-action:manipulation;height:100vh}
         canvas{display:block}
         .ui{position:fixed;top:15px;left:0;right:0;text-align:center;z-index:10;pointer-events:none}
-        .score{font-size:40px;font-weight:bold;color:#ff8800}
+        .score{font-size:45px;font-weight:bold;color:#ff8800}
         .money{font-size:18px;color:#ffaa00}
-        .ammo{position:fixed;bottom:120px;right:20px;color:white;font-size:18px;z-index:10;pointer-events:none}
-        .crosshair{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:30px;pointer-events:none;z-index:20}
-        .btns{position:fixed;bottom:20px;left:0;right:0;display:flex;justify-content:space-around;padding:0 10px;z-index:30}
-        .btn{width:55px;height:55px;border-radius:50%;background:rgba(255,255,255,0.2);border:2px solid white;color:white;font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer}
-        .btn:active{background:rgba(255,68,68,0.7)}
-        .shop-btn{position:fixed;top:15px;right:15px;z-index:30;background:rgba(0,0,0,0.6);color:#ff8800;border:2px solid #ff8800;padding:8px 15px;border-radius:20px;font-size:14px;cursor:pointer}
+        .crosshair{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:35px;pointer-events:none;z-index:20}
+        .killfeed{position:fixed;top:80px;right:20px;z-index:10;pointer-events:none}
+        .kill{color:white;font-size:14px;margin:3px 0;animation:fade 3s forwards}
+        @keyframes fade{0%{opacity:1}70%{opacity:1}100%{opacity:0}}
+        .mobile-controls{position:fixed;bottom:20px;left:0;right:0;z-index:30;display:flex;justify-content:space-between;padding:0 20px;pointer-events:none}
+        .ctrl-btn{width:60px;height:60px;border-radius:50%;background:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.5);color:white;font-size:24px;display:flex;align-items:center;justify-content:center;pointer-events:auto;cursor:pointer}
+        .ctrl-btn:active{background:rgba(255,68,68,0.6)}
+        .weapon-select{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);z-index:30;display:flex;gap:10px}
+        .weapon-btn{width:50px;height:50px;border-radius:15px;background:rgba(0,0,0,0.6);border:2px solid rgba(255,255,255,0.4);color:white;font-size:11px;cursor:pointer;pointer-events:auto;text-align:center}
+        .weapon-btn.active{border-color:#ff4444;background:rgba(255,68,68,0.4)}
+        .ammo-display{position:fixed;bottom:100px;right:20px;color:white;font-size:20px;z-index:30;pointer-events:none}
+        .shop-btn{position:fixed;top:15px;right:15px;z-index:30;background:rgba(0,0,0,0.6);color:#ff8800;border:2px solid #ff8800;padding:8px 15px;border-radius:20px;font-size:14px;cursor:pointer;pointer-events:auto}
     </style>
 </head>
 <body>
-<canvas id="game"></canvas>
-<div class="ui">
-    <div class="score" id="score">0</div>
-    <div class="money" id="money">💰 800</div>
+
+<div class="crosshair" id="crosshair">➕</div>
+<div class="ui"><div class="score" id="score">0</div><div class="money" id="money">💰 800</div></div>
+<div class="killfeed" id="killfeed"></div>
+
+<div class="mobile-controls">
+    <button class="ctrl-btn" onclick="throwGrenade()">💣</button>
+    <button class="ctrl-btn" id="shootBtn" onmousedown="startShooting()" onmouseup="stopShooting()" ontouchstart="startShooting()" ontouchend="stopShooting()">🔫</button>
+    <button class="ctrl-btn" onclick="reload()">🔄</button>
 </div>
-<div class="crosshair" id="ch">➕</div>
-<div class="ammo" id="ammo">🔫 USP | 12/24</div>
-<div class="btns">
-    <button class="btn" onclick="switchWeapon('usp')">USP</button>
-    <button class="btn" id="shootBtn" ontouchstart="startShoot()" ontouchend="stopShoot()" onmousedown="startShoot()" onmouseup="stopShoot()">🔫</button>
-    <button class="btn" onclick="reload()">🔄</button>
-    <button class="btn" onclick="switchWeapon('ak')">AK</button>
-    <button class="btn" onclick="switchWeapon('awp')">AWP</button>
-    <button class="btn" onclick="throwGrenade()">💣</button>
+
+<div class="weapon-select">
+    <button class="weapon-btn active" onclick="switchWeapon('usp')">USP</button>
+    <button class="weapon-btn" onclick="switchWeapon('ak')">AK</button>
+    <button class="weapon-btn" onclick="switchWeapon('awp')">AWP</button>
 </div>
+
+<div class="ammo-display" id="ammoDisplay">12/24</div>
 <button class="shop-btn" onclick="openShop()">🛒</button>
 
 <script>
-const canvas=document.getElementById('game');
-const ctx=canvas.getContext('2d');
-canvas.width=window.innerWidth;
-canvas.height=window.innerHeight;
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x1a1a2e);scene.fog=new THREE.Fog(0x1a1a2e,30,100);
+const camera=new THREE.PerspectiveCamera(75,window.innerWidth/window.innerHeight,0.1,1000);camera.position.set(0,1.5,0);
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setSize(window.innerWidth,window.innerHeight);document.body.appendChild(renderer.domElement);
 
-let score=0,money=800,combo=0;
-let tomatoes=[],bombs=[],bullets=[],particles=[];
-let weapon='usp',ammo=12,maxAmmo=24,canShoot=true;
-let mouseX=canvas.width/2,mouseY=canvas.height/2;
-let hasArmor=false,grenades=0;
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(50,100),new THREE.MeshStandardMaterial({color:0x2a2a3e}));
+floor.rotation.x=-Math.PI/2;floor.position.z=-30;scene.add(floor);
 
-const weapons={
-    usp:{name:'USP',ammo:12,maxAmmo:24,damage:1,fireRate:150,price:0},
-    ak:{name:'AK-47',ammo:30,maxAmmo:90,damage:2,fireRate:100,price:500},
-    awp:{name:'AWP',ammo:5,maxAmmo:15,damage:5,fireRate:1500,price:1500}
-};
+for(let i=0;i<10;i++){let w=new THREE.Mesh(new THREE.BoxGeometry(0.5,3,2),new THREE.MeshStandardMaterial({color:0x3a3a4e}));w.position.set((Math.random()-0.5)*20,1.5,-10-Math.random()*30);scene.add(w);}
 
-canvas.addEventListener('mousemove',e=>{mouseX=e.clientX;mouseY=e.clientY;document.getElementById('ch').style.left=e.clientX+'px';document.getElementById('ch').style.top=e.clientY+'px';});
-canvas.addEventListener('touchmove',e=>{e.preventDefault();mouseX=e.touches[0].clientX;mouseY=e.touches[0].clientY;document.getElementById('ch').style.left=e.touches[0].clientX+'px';document.getElementById('ch').style.top=e.touches[0].clientY+'px';});
-canvas.addEventListener('click',shoot);
-canvas.addEventListener('touchstart',e=>{e.preventDefault();shoot();});
+const sky=new THREE.Mesh(new THREE.SphereGeometry(80,32,32),new THREE.MeshBasicMaterial({color:0x0a0a2e,side:THREE.BackSide}));scene.add(sky);
+scene.add(new THREE.AmbientLight(0x404060,0.5));
+const light=new THREE.DirectionalLight(0xff8866,1);light.position.set(10,20,0);scene.add(light);
 
-function shoot(){
-    if(!canShoot||ammo<=0)return;
-    ammo--;canShoot=false;updateHUD();
-    bullets.push({x:canvas.width/2,y:canvas.height/2,vx:(mouseX-canvas.width/2)*0.05,vy:(mouseY-canvas.height/2)*0.05,life:30});
-    setTimeout(()=>canShoot=true,weapons[weapon].fireRate);
-}
+for(let i=0;i<200;i++){let s=new THREE.Mesh(new THREE.SphereGeometry(0.05,4,4),new THREE.MeshBasicMaterial({color:0xffffff}));s.position.set((Math.random()-0.5)*80,Math.random()*40+5,-Math.random()*80);scene.add(s);}
+
+const gunGroup=new THREE.Group();gunGroup.position.set(0.25,-0.25,-0.7);camera.add(gunGroup);scene.add(camera);
+
+function createUSP(){gunGroup.clear();gunGroup.add(new THREE.Mesh(new THREE.BoxGeometry(0.06,0.2,0.5),new THREE.MeshStandardMaterial({color:0x222222})));let h=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.2,0.12),new THREE.MeshStandardMaterial({color:0x444444}));h.position.y=-0.18;gunGroup.add(h);}
+function createAK(){gunGroup.clear();gunGroup.add(new THREE.Mesh(new THREE.BoxGeometry(0.08,0.2,0.7),new THREE.MeshStandardMaterial({color:0x4a2800})));let m=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.3,0.08),new THREE.MeshStandardMaterial({color:0x333333}));m.position.y=-0.25;gunGroup.add(m);}
+function createAWP(){gunGroup.clear();let b=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,1.2),new THREE.MeshStandardMaterial({color:0x1a4a00}));b.rotation.x=Math.PI/2;gunGroup.add(b);let s=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.3),new THREE.MeshStandardMaterial({color:0x111111}));s.position.y=0.1;gunGroup.add(s);}
+createUSP();
+
+const weapons={usp:{name:'USP-S',ammo:12,maxAmmo:24,damage:1,fireRate:150,model:createUSP,price:0},ak:{name:'AK-47',ammo:30,maxAmmo:90,damage:2,fireRate:100,model:createAK,price:500},awp:{name:'AWP',ammo:5,maxAmmo:15,damage:5,fireRate:1500,model:createAWP,price:1500}};
+let currentWeapon='usp',ammo=12,maxAmmo=24,canShoot=true,score=0,money=800,tomatoes=[],bombs=[],particles=[],grenades=[],grenadesCount=0;
+
+function switchWeapon(name){currentWeapon=name;ammo=weapons[name].ammo;maxAmmo=weapons[name].maxAmmo;weapons[name].model();updateHUD();document.querySelectorAll('.weapon-btn').forEach((b,i)=>{b.classList.toggle('active',['usp','ak','awp'].indexOf(name)===i);});}
+function reload(){ammo=weapons[currentWeapon].ammo;maxAmmo-=weapons[currentWeapon].ammo;if(maxAmmo<0)maxAmmo=0;updateHUD();}
+function updateHUD(){document.getElementById('ammoDisplay').textContent=ammo+'/'+maxAmmo;}
+
+let mouseX=0,mouseY=0;
+document.addEventListener('mousemove',e=>{mouseX=(e.clientX/window.innerWidth)*2-1;mouseY=-(e.clientY/window.innerHeight)*2+1;});
+document.addEventListener('touchmove',e=>{mouseX=(e.touches[0].clientX/window.innerWidth)*2-1;mouseY=-(e.touches[0].clientY/window.innerHeight)*2+1;});
+
+function createTomato(x,y,z){let g=new THREE.Group();g.add(new THREE.Mesh(new THREE.SphereGeometry(0.4,8,8),new THREE.MeshStandardMaterial({color:0xff4444})));g.position.set(x,y,z);scene.add(g);return{mesh:g,speed:0.03+Math.random()*0.08,hp:1};}
+function createBomb(x,y,z){let g=new THREE.Group();g.add(new THREE.Mesh(new THREE.SphereGeometry(0.35,8,8),new THREE.MeshStandardMaterial({color:0x111111})));g.position.set(x,y,z);scene.add(g);return{mesh:g,speed:0.02+Math.random()*0.06};}
+
+function createExplosion(pos,color){for(let i=0;i<10;i++){let p=new THREE.Mesh(new THREE.SphereGeometry(0.05,4,4),new THREE.MeshBasicMaterial({color:color}));p.position.copy(pos);p.velocity=new THREE.Vector3((Math.random()-0.5)*3,Math.random()*3,(Math.random()-0.5)*3);p.life=1;scene.add(p);particles.push(p);}}
+
+function addKill(text){let f=document.getElementById('killfeed');let e=document.createElement('div');e.className='kill';e.textContent=text;f.appendChild(e);setTimeout(()=>e.remove(),3000);
+    if(text.includes('🍅'))money+=100;if(text.includes('Золотой'))money+=500;if(text.includes('💣'))money-=50;document.getElementById('money').textContent='💰 '+money;}
+
+let spawnInterval;
+function startSpawning(){spawnInterval=setInterval(()=>{let b=Math.random()<0.2;let x=(Math.random()-0.5)*18;let y=1+Math.random()*5;let z=-20-Math.random()*25;if(b)bombs.push(createBomb(x,y,z));else tomatoes.push(createTomato(x,y,z));},1000);}
+
+document.addEventListener('click',()=>{if(!canShoot||ammo<=0)return;ammo--;canShoot=false;updateHUD();gunGroup.position.z=-0.75;setTimeout(()=>gunGroup.position.z=-0.7,100);
+    for(let i=tomatoes.length-1;i>=0;i--){let t=tomatoes[i];let sp=t.mesh.position.clone().project(camera);if(Math.abs(sp.x-mouseX)<0.12&&Math.abs(sp.y-mouseY)<0.12){t.hp-=weapons[currentWeapon].damage;if(t.hp<=0){score+=10;document.getElementById('score').textContent=score;addKill('🍅 Томат');createExplosion(t.mesh.position,0xff4444);scene.remove(t.mesh);tomatoes.splice(i,1);}break;}}
+    setTimeout(()=>canShoot=true,weapons[currentWeapon].fireRate);});
+document.addEventListener('touchstart',e=>{e.preventDefault();document.dispatchEvent(new Event('click'));});
 
 let shootInterval;
-function startShoot(){shoot();shootInterval=setInterval(shoot,weapons[weapon].fireRate);}
-function stopShoot(){clearInterval(shootInterval);}
+function startShooting(){document.dispatchEvent(new Event('click'));shootInterval=setInterval(()=>document.dispatchEvent(new Event('click')),weapons[currentWeapon].fireRate);}
+function stopShooting(){clearInterval(shootInterval);}
 
-function switchWeapon(w){
-    weapon=w;ammo=weapons[w].ammo;maxAmmo=weapons[w].maxAmmo;updateHUD();
-}
+function throwGrenade(){if(grenadesCount<=0){alert('❌ Нет гранат! Купи в 🛒');return;}grenadesCount--;let g=new THREE.Mesh(new THREE.SphereGeometry(0.15,8,8),new THREE.MeshStandardMaterial({color:0x334400}));g.position.copy(camera.position);g.velocity=new THREE.Vector3(0,0.3,-2);scene.add(g);grenades.push(g);setTimeout(()=>{if(g.parent){createExplosion(g.position,0xff8800);tomatoes.forEach(t=>{if(t.mesh.position.distanceTo(g.position)<5){t.hp-=3;if(t.hp<=0){score+=10;document.getElementById('score').textContent=score;addKill('💣 Граната');scene.remove(t.mesh);}}});tomatoes=tomatoes.filter(t=>t.hp>0);scene.remove(g);}},1500);}
 
-function reload(){
-    ammo=weapons[weapon].ammo;maxAmmo-=weapons[weapon].ammo;
-    if(maxAmmo<0)maxAmmo=0;updateHUD();
-}
+function moveObjects(){tomatoes.forEach(t=>{t.mesh.position.z+=t.speed;t.mesh.rotation.x+=0.02;});bombs.forEach(b=>{b.mesh.position.z+=b.speed;});tomatoes=tomatoes.filter(t=>{if(t.mesh.position.z>2){scene.remove(t.mesh);return false;}return true;});bombs=bombs.filter(b=>{if(b.mesh.position.z>2){scene.remove(b.mesh);return false;}return true;});}
 
-function updateHUD(){
-    document.getElementById('ammo').textContent='🔫 '+weapons[weapon].name+' | '+ammo+'/'+maxAmmo;
-}
+function animate(){requestAnimationFrame(animate);moveObjects();particles.forEach(p=>{p.position.add(p.velocity.clone().multiplyScalar(0.1));p.velocity.y-=0.05;p.life-=0.02;p.scale.setScalar(p.life);});particles=particles.filter(p=>{if(p.life<=0){scene.remove(p);return false;}return true;});grenades.forEach(g=>{g.position.add(g.velocity.clone().multiplyScalar(0.3));g.velocity.y-=0.02;});renderer.render(scene,camera);}
 
-function throwGrenade(){
-    if(grenades<=0){alert('Нет гранат! Купи в 🛒');return;}
-    grenades--;
-    tomatoes.forEach(t=>{
-        let dist=Math.hypot(t.x-mouseX,t.y-mouseY);
-        if(dist<200){t.hp-=3;if(t.hp<=0){score+=10;money+=100;createParticles(t.x,t.y,'#ff8800');}}
-    });
-    tomatoes=tomatoes.filter(t=>t.hp>0);
-    createParticles(mouseX,mouseY,'#ff4400');
-    document.getElementById('score').textContent=score;
-    document.getElementById('money').textContent='💰 '+money;
-}
+startSpawning();animate();updateHUD();
 
-function openShop(){
-    let msg='🛒 МАГАЗИН\n💰 Деньги: '+money+'\n\n';
-    msg+='1. USP-S — Бесплатно\n';
-    msg+='2. AK-47 — 500 💰\n';
-    msg+='3. AWP — 1500 💰\n';
-    msg+='4. Граната — 200 💰\n';
-    msg+='5. Броня — 300 💰\n';
-    msg+='6. Закрыть';
-    let choice=prompt(msg);
-    if(choice==='1'){switchWeapon('usp');}
-    if(choice==='2'){if(money>=500){money-=500;switchWeapon('ak');}else alert('❌ Не хватает!');}
-    if(choice==='3'){if(money>=1500){money-=1500;switchWeapon('awp');}else alert('❌ Не хватает!');}
-    if(choice==='4'){if(money>=200){money-=200;grenades++;alert('✅ Граната куплена!');}else alert('❌ Не хватает!');}
-    if(choice==='5'){if(money>=300&&!hasArmor){money-=300;hasArmor=true;alert('🛡️ Броня куплена!');}else alert(hasArmor?'Уже есть!':'❌ Не хватает!');}
-    document.getElementById('money').textContent='💰 '+money;
-}
+function openShop(){let choice=prompt('🛒 МАГАЗИН\n💰 Деньги: '+money+'\n\n1. USP-S — Бесплатно\n2. AK-47 — 500 💰\n3. AWP — 1500 💰\n4. Граната — 200 💰\n5. Закрыть');if(choice==='1')switchWeapon('usp');if(choice==='2'&&money>=500){money-=500;switchWeapon('ak');}if(choice==='3'&&money>=1500){money-=1500;switchWeapon('awp');}if(choice==='4'&&money>=200){money-=200;grenadesCount++;alert('✅ Граната куплена!');}document.getElementById('money').textContent='💰 '+money;}
 
-function spawn(){
-    if(Math.random()<0.02){
-        let isBomb=Math.random()<0.2;
-        let x=Math.random()*canvas.width;
-        let obj={x:x,y:-30,size:isBomb?30:40,speed:1+Math.random()*3,hp:isBomb?999:1,isBomb:isBomb};
-        if(isBomb)bombs.push(obj);else tomatoes.push(obj);
-    }
-}
+setInterval(()=>{let x=(Math.random()-0.5)*18;let y=1+Math.random()*5;tomatoes.push({mesh:(()=>{let g=new THREE.Group();g.add(new THREE.Mesh(new THREE.SphereGeometry(0.5,12,12),new THREE.MeshStandardMaterial({color:0xffaa00,emissive:0xff8800,emissiveIntensity:0.3})));g.position.set(x,y,-25);scene.add(g);return g;})(),speed:0.02,hp:2,golden:true});},20000);
 
-function createParticles(x,y,color){
-    for(let i=0;i<8;i++){particles.push({x:x,y:y,vx:(Math.random()-0.5)*5,vy:(Math.random()-0.5)*5,life:20,color:color});}
-}
-
-function draw(){
-    ctx.fillStyle='#1a1a2e';ctx.fillRect(0,0,canvas.width,canvas.height);
-    
-    // Звёзды
-    for(let i=0;i<50;i++){ctx.fillStyle='#fff';ctx.fillRect((i*73)%canvas.width,(i*37)%canvas.height,1,1);}
-    
-    // Пули
-    ctx.fillStyle='#ff0';
-    bullets.forEach(b=>{ctx.fillRect(b.x,b.y,4,4);b.x+=b.vx;b.y+=b.vy;b.life--;});
-    bullets=bullets.filter(b=>b.life>0&&b.x>0&&b.x<canvas.width&&b.y>0&&b.y<canvas.height);
-    
-    // Томаты
-    tomatoes.forEach(t=>{
-        ctx.font=t.size+'px Arial';ctx.fillText('🍅',t.x,t.y);
-        t.y+=t.speed;
-        // Попадание пули
-        bullets.forEach(b=>{
-            if(Math.hypot(b.x-t.x,b.y-t.y)<t.size){t.hp-=weapons[weapon].damage;b.life=0;}
-        });
-        if(t.hp<=0){score+=10;money+=100;createParticles(t.x,t.y,'#ff4444');}
-        // Долетел до игрока
-        if(t.y>canvas.height&&!hasArmor){score-=5;money-=50;}
-        if(t.y>canvas.height&&hasArmor){hasArmor=false;}
-    });
-    tomatoes=tomatoes.filter(t=>t.hp>0&&t.y<canvas.height+50);
-    
-    // Бомбы
-    bombs.forEach(b=>{
-        ctx.font=b.size+'px Arial';ctx.fillText('💣',b.x,b.y);
-        b.y+=b.speed;
-        bullets.forEach(bul=>{if(Math.hypot(bul.x-b.x,bul.y-b.y)<b.size){score-=10;money-=100;createParticles(b.x,b.y,'#f00');bul.life=0;b.life=0;}});
-    });
-    bombs=bombs.filter(b=>b.y<canvas.height+50);
-    
-    // Частицы
-    particles.forEach(p=>{ctx.fillStyle=p.color;ctx.fillRect(p.x,p.y,3,3);p.x+=p.vx;p.y+=p.vy;p.life--;});
-    particles=particles.filter(p=>p.life>0);
-    
-    document.getElementById('score').textContent=score;
-    document.getElementById('money').textContent='💰 '+money;
-    
-    spawn();
-    requestAnimationFrame(draw);
-}
-
-updateHUD();
-draw();
+window.addEventListener('resize',()=>{camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight);});
 </script>
 </body>
 </html>

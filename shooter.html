@@ -13,13 +13,11 @@
         .ui .score{font-size:50px;font-weight:bold;color:#ff8800;text-shadow:0 0 20px rgba(255,136,0,0.5)}
         .ui .lives{color:white;font-size:20px;margin-top:5px}
         .ui .combo{color:#ff4444;font-size:30px;font-weight:bold;margin-top:5px;height:30px}
-        .crosshair{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:40px;pointer-events:none;z-index:20;text-shadow:0 0 10px rgba(255,0,0,0.8)}
+        .crosshair{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:40px;pointer-events:none;z-index:20}
         .overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:30;display:flex;align-items:center;justify-content:center;flex-direction:column}
         .overlay h1{color:#ff4444;font-size:36px;margin-bottom:20px}
         .overlay .final-score{color:#ff8800;font-size:60px;font-weight:bold;margin:20px 0}
         .overlay button{padding:15px 50px;background:#ff4444;color:white;border:none;border-radius:30px;font-size:20px;cursor:pointer;font-weight:bold}
-        .overlay button:hover{background:#ff6666}
-        .ammo{position:fixed;bottom:30px;right:30px;color:white;font-size:16px;z-index:10;pointer-events:none;text-shadow:0 0 10px rgba(0,0,0,0.8)}
     </style>
 </head>
 <body>
@@ -29,391 +27,155 @@
     <div class="lives" id="lives">❤️❤️❤️</div>
     <div class="combo" id="combo"></div>
 </div>
-<div class="ammo" id="ammo">🔫 Бесконечно</div>
-
 <div class="overlay" id="menuOverlay">
     <h1>🍅 3D Томатный Тир</h1>
     <p style="color:white;font-size:18px;margin-bottom:20px">Стреляй по томатам! Не стреляй по бомбам!</p>
     <button onclick="startGame()">🔫 НАЧАТЬ ИГРУ</button>
 </div>
-
 <div class="overlay" id="gameOverOverlay" style="display:none">
     <h1>💀 Игра окончена!</h1>
     <div class="final-score" id="finalScore">0</div>
-    <p style="color:white;font-size:18px;margin-bottom:20px">Томатов собрано: <span id="finalTomatoes">0</span></p>
     <button onclick="restartGame()">🔄 ИГРАТЬ ЕЩЁ</button>
 </div>
+
 <script>
-// === СЦЕНА ===
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x1a1a2e);
-scene.fog = new THREE.Fog(0x1a1a2e, 30, 100);
-
-// === КАМЕРА ===
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-camera.position.set(0, 2, 0);
-
-// === РЕНДЕРЕР ===
-const renderer = new THREE.WebGLRenderer({antialias:true});
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x1a1a2e);
+const camera=new THREE.PerspectiveCamera(75,window.innerWidth/window.innerHeight,0.1,1000);
+camera.position.set(0,2,0);
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(window.innerWidth,window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// === ПОЛ ===
-const floorGeom = new THREE.PlaneGeometry(50, 100);
-const floorMat = new THREE.MeshStandardMaterial({color:0x2a2a3e, roughness:0.8});
-const floor = new THREE.Mesh(floorGeom, floorMat);
-floor.rotation.x = -Math.PI/2;
-floor.position.z = -30;
-floor.receiveShadow = true;
-scene.add(floor);
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(50,100),new THREE.MeshStandardMaterial({color:0x2a2a3e}));
+floor.rotation.x=-Math.PI/2;floor.position.z=-30;scene.add(floor);
 
-// === НЕБО ===
-const skyGeom = new THREE.SphereGeometry(80, 32, 32);
-const skyMat = new THREE.MeshBasicMaterial({color:0x0a0a2e, side:THREE.BackSide});
-const sky = new THREE.Mesh(skyGeom, skyMat);
+const sky=new THREE.Mesh(new THREE.SphereGeometry(80,32,32),new THREE.MeshBasicMaterial({color:0x0a0a2e,side:THREE.BackSide}));
 scene.add(sky);
 
-// === ОСВЕЩЕНИЕ ===
-const ambientLight = new THREE.AmbientLight(0x404060, 0.5);
-scene.add(ambientLight);
+scene.add(new THREE.AmbientLight(0x404060,0.5));
+const light=new THREE.DirectionalLight(0xff8866,1);
+light.position.set(10,20,0);scene.add(light);
 
-const dirLight = new THREE.DirectionalLight(0xff8866, 1);
-dirLight.position.set(10, 20, 0);
-dirLight.castShadow = true;
-scene.add(dirLight);
+const gunGroup=new THREE.Group();
+gunGroup.add(new THREE.Mesh(new THREE.BoxGeometry(0.1,0.3,0.6),new THREE.MeshStandardMaterial({color:0x333333})));
+gunGroup.position.set(0.3,-0.3,-0.8);
+camera.add(gunGroup);scene.add(camera);
 
-// === ОРУЖИЕ (ПИСТОЛЕТ) ===
-const gunGroup = new THREE.Group();
-const gunBody = new THREE.Mesh(
-    new THREE.BoxGeometry(0.1, 0.3, 0.6),
-    new THREE.MeshStandardMaterial({color:0x333333})
-);
-const gunHandle = new THREE.Mesh(
-    new THREE.BoxGeometry(0.08, 0.25, 0.15),
-    new THREE.MeshStandardMaterial({color:0x555555})
-);
-gunHandle.position.y = -0.25;
-gunGroup.add(gunBody);
-gunGroup.add(gunHandle);
-gunGroup.position.set(0.3, -0.3, -0.8);
-camera.add(gunGroup);
-scene.add(camera);
+let score=0,lives=3,gameActive=false,comboCount=0,tomatoes=[],bombs=[];
 
-// === СОСТОЯНИЕ ИГРЫ ===
-let score = 0;
-let lives = 3;
-let gameActive = false;
-let comboCount = 0;
-let tomatoes = [];
-let bombs = [];
-let particles = [];
-
-// === ПРИЦЕЛ ===
-const crosshair = document.getElementById('crosshair');
-
-// === УПРАВЛЕНИЕ МЫШКОЙ ===
-let mouseX = 0;
-let mouseY = 0;
-document.addEventListener('mousemove', (e) => {
-    mouseX = (e.clientX / window.innerWidth) * 2 - 1;
-    mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
+document.addEventListener('mousemove',(e)=>{
+    document.getElementById('crosshair').style.left=e.clientX+'px';
+    document.getElementById('crosshair').style.top=e.clientY+'px';
 });
 
-// === ВЫСТРЕЛ ===
-document.addEventListener('click', () => {
-    if(!gameActive) return;
-    shoot();
+document.addEventListener('click',()=>{
+    if(!gameActive)return;
+    gunGroup.position.z=-0.7;setTimeout(()=>gunGroup.position.z=-0.8,100);
+    for(let i=tomatoes.length-1;i>=0;i--){
+        let t=tomatoes[i];
+        let screenPos=t.mesh.position.clone().project(camera);
+        let mouseX=(document.getElementById('crosshair').offsetLeft/window.innerWidth)*2-1;
+        let mouseY=-(document.getElementById('crosshair').offsetTop/window.innerHeight)*2+1;
+        if(Math.abs(screenPos.x-mouseX)<0.15&&Math.abs(screenPos.y-mouseY)<0.15){
+            comboCount++;let bonus=comboCount>=10?3:comboCount>=5?2:1;
+            score+=bonus;document.getElementById('score').textContent=score;
+            scene.remove(t.mesh);tomatoes.splice(i,1);
+            if(comboCount===5)document.getElementById('combo').textContent='🔥 x5!';
+            if(comboCount===10)document.getElementById('combo').textContent='⚡ x10!';
+            setTimeout(()=>document.getElementById('combo').textContent='',1000);
+            return;
+        }
+    }
+    for(let i=bombs.length-1;i>=0;i--){
+        let b=bombs[i];
+        let screenPos=b.mesh.position.clone().project(camera);
+        let mouseX=(document.getElementById('crosshair').offsetLeft/window.innerWidth)*2-1;
+        let mouseY=-(document.getElementById('crosshair').offsetTop/window.innerHeight)*2+1;
+        if(Math.abs(screenPos.x-mouseX)<0.15&&Math.abs(screenPos.y-mouseY)<0.15){
+            lives--;document.getElementById('lives').textContent='❤️'.repeat(Math.max(0,lives));
+            comboCount=0;scene.remove(b.mesh);bombs.splice(i,1);
+            if(lives<=0)endGame();return;
+        }
+    }
+    comboCount=0;
 });
 
-function shoot() {
-    // Анимация отдачи
-    gunGroup.position.z = -0.7;
-    setTimeout(() => gunGroup.position.z = -0.8, 100);
-    
-    // Звук выстрела
-    let audio = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=');
-    audio.play();
-    
-    // Проверяем попадание
-    let hit = false;
-    for(let i = tomatoes.length-1; i >= 0; i--) {
-        let tomato = tomatoes[i];
-        let dist = Math.sqrt(
-            Math.pow(tomato.mesh.position.x - camera.position.x, 2) +
-            Math.pow(tomato.mesh.position.y - camera.position.y, 2) +
-            Math.pow(tomato.mesh.position.z - camera.position.z, 2)
-        );
-        
-        // Попадание (упрощённо - по центру экрана)
-        let screenPos = tomato.mesh.position.clone().project(camera);
-        let dx = screenPos.x - mouseX;
-        let dy = screenPos.y - mouseY;
-        let screenDist = Math.sqrt(dx*dx + dy*dy);
-        
-        if(screenDist < 0.15 && dist < 30) {
-            // Попал!
-            comboCount++;
-            let bonus = comboCount >= 10 ? 3 : comboCount >= 5 ? 2 : 1;
-            score += bonus;
-            document.getElementById('score').textContent = score;
-            
-            // Эффект
-            createExplosion(tomato.mesh.position);
-            scene.remove(tomato.mesh);
-            tomatoes.splice(i, 1);
-            hit = true;
-            
-            if(comboCount === 5) showCombo('🔥 x5!');
-            if(comboCount === 10) showCombo('⚡ x10!');
-            break;
-        }
-    }
-    
-    // Проверяем бомбы
-    if(!hit) {
-        for(let i = bombs.length-1; i >= 0; i--) {
-            let bomb = bombs[i];
-            let screenPos = bomb.mesh.position.clone().project(camera);
-            let dx = screenPos.x - mouseX;
-            let dy = screenPos.y - mouseY;
-            let screenDist = Math.sqrt(dx*dx + dy*dy);
-            
-            if(screenDist < 0.15) {
-                lives--;
-                document.getElementById('lives').textContent = '❤️'.repeat(Math.max(0, lives));
-                comboCount = 0;
-                createExplosion(bomb.mesh.position, true);
-                scene.remove(bomb.mesh);
-                bombs.splice(i, 1);
-                if(lives <= 0) endGame();
-                break;
-            }
-        }
-    }
-    
-    if(!hit) comboCount = 0;
+function createTomato(x,y,z){
+    let g=new THREE.Group();
+    g.add(new THREE.Mesh(new THREE.SphereGeometry(0.5,8,8),new THREE.MeshStandardMaterial({color:0xff4444})));
+    g.position.set(x,y,z);scene.add(g);
+    return{mesh:g,speed:0.05+Math.random()*0.1};
 }
 
-function createExplosion(pos, isBomb = false) {
-    let color = isBomb ? 0xff0000 : 0xff8800;
-    for(let i = 0; i < 15; i++) {
-        let geom = new THREE.SphereGeometry(0.1, 4, 4);
-        let mat = new THREE.MeshBasicMaterial({color: color});
-        let particle = new THREE.Mesh(geom, mat);
-        particle.position.copy(pos);
-        particle.velocity = new THREE.Vector3(
-            (Math.random()-0.5) * 5,
-            Math.random() * 5,
-            (Math.random()-0.5) * 5
-        );
-        particle.life = 1;
-        scene.add(particle);
-        particles.push(particle);
+function createBomb(x,y,z){
+    let g=new THREE.Group();
+    g.add(new THREE.Mesh(new THREE.SphereGeometry(0.4,8,8),new THREE.MeshStandardMaterial({color:0x111111})));
+    g.position.set(x,y,z);scene.add(g);
+    return{mesh:g,speed:0.03+Math.random()*0.1};
+}
+
+let spawnInterval;
+function startSpawning(){
+    spawnInterval=setInterval(()=>{
+        if(!gameActive)return;
+        let isBomb=Math.random()<0.2;
+        let x=(Math.random()-0.5)*15;
+        let y=1+Math.random()*5;
+        let z=-15-Math.random()*15;
+        if(isBomb)bombs.push(createBomb(x,y,z));
+        else tomatoes.push(createTomato(x,y,z));
+    },1200);
+}
+
+function moveObjects(){
+    for(let i=tomatoes.length-1;i>=0;i--){
+        tomatoes[i].mesh.position.z+=tomatoes[i].speed;
+        tomatoes[i].mesh.rotation.x+=0.03;
+        if(tomatoes[i].mesh.position.z>2){
+            lives--;document.getElementById('lives').textContent='❤️'.repeat(Math.max(0,lives));
+            scene.remove(tomatoes[i].mesh);tomatoes.splice(i,1);
+            if(lives<=0)endGame();
+        }
+    }
+    for(let i=bombs.length-1;i>=0;i--){
+        bombs[i].mesh.position.z+=bombs[i].speed;
+        if(bombs[i].mesh.position.z>2){scene.remove(bombs[i].mesh);bombs.splice(i,1);}
     }
 }
 
-function showCombo(text) {
-    document.getElementById('combo').textContent = text;
-    setTimeout(() => document.getElementById('combo').textContent = '', 1000);
+function startGame(){
+    score=0;lives=3;gameActive=true;comboCount=0;
+    document.getElementById('score').textContent='0';
+    document.getElementById('lives').textContent='❤️❤️❤️';
+    document.getElementById('combo').textContent='';
+    document.getElementById('menuOverlay').style.display='none';
+    document.getElementById('gameOverOverlay').style.display='none';
+    tomatoes.forEach(t=>scene.remove(t.mesh));
+    bombs.forEach(b=>scene.remove(b.mesh));
+    tomatoes=[];bombs=[];
+    startSpawning();
+    setInterval(()=>{if(gameActive)moveObjects();},30);
 }
 
-// === АНИМАЦИЯ ===
-function animate() {
-    requestAnimationFrame(animate);
-    
-    if(gameActive) {
-        // Качание оружия
-        gunGroup.position.x = 0.3 + Math.sin(Date.now()*0.01) * 0.02;
-        
-        // Частицы
-        for(let i = particles.length-1; i >= 0; i--) {
-            let p = particles[i];
-            p.position.add(p.velocity.clone().multiplyScalar(0.1));
-            p.velocity.y -= 0.1;
-            p.life -= 0.02;
-            p.material.opacity = p.life;
-            p.scale.setScalar(p.life);
-            if(p.life <= 0) {
-                scene.remove(p);
-                particles.splice(i, 1);
-            }
-        }
-    }
-    
-    renderer.render(scene, camera);
+function endGame(){
+    gameActive=false;clearInterval(spawnInterval);
+    document.getElementById('finalScore').textContent=score;
+    document.getElementById('gameOverOverlay').style.display='flex';
 }
+
+function restartGame(){startGame();}
+
+function animate(){requestAnimationFrame(animate);renderer.render(scene,camera);}
 animate();
 
-// === РЕСАЙЗ ===
-window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
+window.addEventListener('resize',()=>{
+    camera.aspect=window.innerWidth/window.innerHeight;
     camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(window.innerWidth,window.innerHeight);
 });
 
-console.log('🍅 3D Тир готов! Жди Часть 3 для спавна томатов!');
+document.getElementById('menuOverlay').style.display='flex';
 </script>
-// === СОЗДАНИЕ ТОМАТА ===
-function createTomato(x, y, z) {
-    let group = new THREE.Group();
-    
-    // Тело томата
-    let bodyGeom = new THREE.SphereGeometry(0.5, 16, 16);
-    let bodyMat = new THREE.MeshStandardMaterial({color: 0xff4444, roughness: 0.3});
-    let body = new THREE.Mesh(bodyGeom, bodyMat);
-    body.castShadow = true;
-    group.add(body);
-    
-    // Листик
-    let leafGeom = new THREE.ConeGeometry(0.2, 0.4, 6);
-    let leafMat = new THREE.MeshStandardMaterial({color: 0x00aa00});
-    let leaf = new THREE.Mesh(leafGeom, leafMat);
-    leaf.position.y = 0.6;
-    group.add(leaf);
-    
-    group.position.set(x, y, z);
-    scene.add(group);
-    
-    return {
-        mesh: group,
-        speed: 0.05 + Math.random() * 0.15,
-        rotSpeed: (Math.random() - 0.5) * 0.05
-    };
-}
-
-// === СОЗДАНИЕ БОМБЫ ===
-function createBomb(x, y, z) {
-    let group = new THREE.Group();
-    
-    let bodyGeom = new THREE.SphereGeometry(0.45, 12, 12);
-    let bodyMat = new THREE.MeshStandardMaterial({color: 0x111111, roughness: 0.2, metalness: 0.8});
-    let body = new THREE.Mesh(bodyGeom, bodyMat);
-    group.add(body);
-    
-    // Фитиль
-    let fuseGeom = new THREE.CylinderGeometry(0.03, 0.03, 0.3);
-    let fuseMat = new THREE.MeshBasicMaterial({color: 0xff8800});
-    let fuse = new THREE.Mesh(fuseGeom, fuseMat);
-    fuse.position.y = 0.5;
-    group.add(fuse);
-    
-    group.position.set(x, y, z);
-    scene.add(group);
-    
-    return {
-        mesh: group,
-        speed: 0.03 + Math.random() * 0.1,
-        rotSpeed: (Math.random() - 0.5) * 0.03
-    };
-}
-
-// === СПАВН ===
-let spawnInterval;
-function startSpawning() {
-    spawnInterval = setInterval(() => {
-        if(!gameActive) return;
-        
-        let isBomb = Math.random() < 0.2;
-        let x = (Math.random() - 0.5) * 20;
-        let y = 1 + Math.random() * 6;
-        let z = -20 - Math.random() * 20;
-        
-        if(isBomb) {
-            bombs.push(createBomb(x, y, z));
-        } else {
-            tomatoes.push(createTomato(x, y, z));
-        }
-    }, 1000);
-}
-
-// === ДВИЖЕНИЕ ТОМАТОВ ===
-function moveObjects() {
-    // Томаты летят к игроку
-    for(let i = tomatoes.length-1; i >= 0; i--) {
-        let t = tomatoes[i];
-        t.mesh.position.z += t.speed;
-        t.mesh.rotation.x += t.rotSpeed;
-        t.mesh.rotation.y += t.rotSpeed;
-        
-        // Томат долетел до игрока
-        if(t.mesh.position.z > 2) {
-            lives--;
-            document.getElementById('lives').textContent = '❤️'.repeat(Math.max(0, lives));
-            comboCount = 0;
-            scene.remove(t.mesh);
-            tomatoes.splice(i, 1);
-            if(lives <= 0) endGame();
-        }
-    }
-    
-    // Бомбы летят к игроку
-    for(let i = bombs.length-1; i >= 0; i--) {
-        let b = bombs[i];
-        b.mesh.position.z += b.speed;
-        b.mesh.rotation.y += b.rotSpeed;
-        
-        if(b.mesh.position.z > 2) {
-            scene.remove(b.mesh);
-            bombs.splice(i, 1);
-        }
-    }
-}
-
-// === СТАРТ ИГРЫ ===
-function startGame() {
-    score = 0;
-    lives = 3;
-    gameActive = true;
-    comboCount = 0;
-    
-    document.getElementById('score').textContent = '0';
-    document.getElementById('lives').textContent = '❤️❤️❤️';
-    document.getElementById('combo').textContent = '';
-    document.getElementById('menuOverlay').style.display = 'none';
-    document.getElementById('gameOverOverlay').style.display = 'none';
-    
-    // Очищаем старые объекты
-    tomatoes.forEach(t => scene.remove(t.mesh));
-    bombs.forEach(b => scene.remove(b.mesh));
-    particles.forEach(p => scene.remove(p));
-    tomatoes = [];
-    bombs = [];
-    particles = [];
-    
-    startSpawning();
-    
-    // Движение объектов
-    setInterval(() => {
-        if(gameActive) moveObjects();
-    }, 30);
-}
-
-// === КОНЕЦ ИГРЫ ===
-function endGame() {
-    gameActive = false;
-    clearInterval(spawnInterval);
-    
-    document.getElementById('finalScore').textContent = score;
-    document.getElementById('finalTomatoes').textContent = score;
-    document.getElementById('gameOverOverlay').style.display = 'flex';
-    document.getElementById('lives').textContent = '💀';
-    
-    // Убираем все объекты
-    tomatoes.forEach(t => scene.remove(t.mesh));
-    bombs.forEach(b => scene.remove(b.mesh));
-    particles.forEach(p => scene.remove(p));
-    tomatoes = [];
-    bombs = [];
-    particles = [];
-}
-
-function restartGame() {
-    startGame();
-}
-
-// === ПОДГОТОВКА ===
-document.getElementById('menuOverlay').style.display = 'flex';
-document.getElementById('gameOverOverlay').style.display = 'none';
-
-console.log('🍅 3D Томатный Тир готов! Нажми НАЧАТЬ ИГРУ!');
+</body>
+    </html>

@@ -3,142 +3,185 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>👻 TomatiK Horror 3D</title>
+    <title>👻 Офисный Хоррор v2</title>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
         body{background:#000;overflow:hidden;font-family:Arial;user-select:none;touch-action:manipulation;height:100vh}
         canvas{display:block}
-        .ui{position:fixed;top:15px;left:0;right:0;text-align:center;z-index:10;pointer-events:none;color:white}
-        .fear{font-size:30px;font-weight:bold;color:#ff4444}
-        .crosshair{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:20;font-size:30px}
-        .screamer{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.9);z-index:50;display:none;align-items:center;justify-content:center;flex-direction:column}
-        .screamer.show{display:flex}
-        .screamer .ghost{font-size:150px;animation:shake 0.1s infinite}
-        @keyframes shake{0%{transform:translate(0,0)}25%{transform:translate(-10px,10px)}50%{transform:translate(10px,-10px)}75%{transform:translate(-10px,-10px)}100%{transform:translate(10px,10px)}}
         
-        .controls{position:fixed;bottom:30px;left:0;right:0;z-index:30;display:flex;justify-content:center;gap:20px;pointer-events:none}
-        .c-btn{width:70px;height:70px;border-radius:50%;background:rgba(255,255,255,0.2);border:2px solid rgba(255,255,255,0.5);color:white;font-size:24px;display:flex;align-items:center;justify-content:center;pointer-events:auto;cursor:pointer}
-        .c-btn:active{background:rgba(255,68,68,0.6)}
-        .dpad{position:fixed;bottom:30px;left:20px;z-index:30;pointer-events:auto}
+        .lobby{position:fixed;top:0;left:0;right:0;bottom:0;background:linear-gradient(180deg,#1a1a2e,#0a0a1a);z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center}
+        .lobby h1{color:#ff4444;font-size:28px;margin-bottom:10px}
+        .lobby .character{font-size:80px;margin:20px 0;animation:float 2s infinite}
+        @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-15px)}}
+        .lobby .name{color:white;font-size:18px;margin-bottom:30px}
+        .lobby button{padding:15px 50px;background:#ff4444;color:white;border:none;border-radius:30px;font-size:20px;cursor:pointer;font-weight:bold;animation:pulse 2s infinite}
+        @keyframes pulse{0%,100%{box-shadow:0 0 10px #ff4444}50%{box-shadow:0 0 30px #ff0000}}
+        
+        .ui{position:fixed;top:15px;left:0;right:0;text-align:center;z-index:10;pointer-events:none;color:white;display:none}
+        .lives{font-size:24px;color:#ff4444}
+        .info{font-size:12px;color:#888;margin-top:5px}
+        
+        .crosshair{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:20;font-size:30px;display:none}
+        
+        .screamer{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.95);z-index:50;display:none;align-items:center;justify-content:center;flex-direction:column}
+        .screamer.show{display:flex}
+        .screamer .ghost-face{font-size:180px;animation:shake 0.08s infinite;filter:drop-shadow(0 0 30px #f00)}
+        @keyframes shake{0%{transform:translate(0,0)}25%{transform:translate(-15px,15px)}50%{transform:translate(15px,-15px)}75%{transform:translate(-15px,-15px)}100%{transform:translate(15px,15px)}}
+        .screamer .s-text{color:#f00;font-size:50px;font-weight:bold;margin-top:20px;text-shadow:0 0 20px #f00}
+        
+        .cutscene{position:fixed;top:0;left:0;right:0;bottom:0;background:#000;z-index:90;display:none;align-items:center;justify-content:center;flex-direction:column}
+        .cutscene.show{display:flex}
+        .cutscene .cs-text{color:white;font-size:24px;text-align:center;padding:20px}
+        .cutscene .cs-sub{color:#888;font-size:14px;margin-top:10px}
+        
+        .dpad{position:fixed;bottom:40px;left:20px;z-index:30;display:none}
         .dpad-row{display:flex;justify-content:center}
-        .dpad-btn{width:50px;height:50px;background:rgba(255,255,255,0.2);border:2px solid rgba(255,255,255,0.5);color:white;font-size:20px;display:flex;align-items:center;justify-content:center;margin:2px;cursor:pointer;border-radius:10px}
+        .dpad-btn{width:45px;height:45px;background:rgba(255,255,255,0.2);border:2px solid rgba(255,255,255,0.5);color:white;font-size:18px;display:flex;align-items:center;justify-content:center;margin:2px;cursor:pointer;border-radius:10px;pointer-events:auto}
         .dpad-btn:active{background:rgba(255,68,68,0.6)}
-        .look-area{position:fixed;top:0;right:0;width:50%;height:70%;z-index:25;pointer-events:auto}
+        
+        .look-area{position:fixed;top:0;right:0;width:50%;height:100%;z-index:25}
+        
+        .game-over-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.9);z-index:60;display:none;align-items:center;justify-content:center;flex-direction:column}
+        .game-over-overlay.show{display:flex}
+        .game-over-overlay h1{color:#f00;font-size:40px;margin-bottom:20px}
+        .game-over-overlay button{padding:15px 40px;background:#ff4444;color:white;border:none;border-radius:25px;font-size:18px;cursor:pointer;margin:10px;font-weight:bold}
+        
+        @media screen and (orientation:landscape){
+            .dpad{bottom:20px;left:10px}
+            .dpad-btn{width:35px;height:35px;font-size:14px}
+            .look-area{width:60%}
+        }
     </style>
 </head>
 <body>
 
+<div class="lobby" id="lobby">
+    <h1>🏢 Офисный Хоррор</h1>
+    <div class="character">👨‍💻</div>
+    <div class="name">Шеф, задержись сегодня...</div>
+    <button onclick="startCutscene()">ПОГНАЛИ</button>
+</div>
+
+<div class="cutscene" id="cutscene">
+    <div class="cs-text" id="csText">Офис опустел...</div>
+    <div class="cs-sub" id="csSub">Все ушли. Кроме тебя. И чего-то ещё...</div>
+</div>
+
 <div class="crosshair" id="crosshair">🔦</div>
-<div class="ui"><div class="fear" id="fear">😊 Спокойно</div></div>
+<div class="ui" id="gameUI">
+    <div class="lives" id="lives">❤️❤️❤️</div>
+    <div class="info">Найди выход... если сможешь</div>
+</div>
 
 <div class="screamer" id="screamer">
-    <div class="ghost">👻</div>
+    <div class="ghost-face">👻</div>
+    <div class="s-text">БУ!</div>
+</div>
+
+<div class="game-over-overlay" id="gameOverOverlay">
+    <h1>💀 ТЫ УМЕР</h1>
+    <p style="color:white;margin-bottom:20px" id="deathText">Призраки добрались до тебя...</p>
+    <button onclick="restartGame()">🔄 ЗАНОВО</button>
+    <button onclick="goToLobby()">🏠 В ЛОББИ</button>
 </div>
 
 <div class="look-area" id="lookArea"></div>
 
 <div class="dpad" id="dpad">
-    <div class="dpad-row"><button class="dpad-btn" id="btnUp" ontouchstart="moveStart('up')" ontouchend="moveEnd()">⬆️</button></div>
+    <div class="dpad-row"><button class="dpad-btn" ontouchstart="moveStart('up')" ontouchend="moveEnd()">⬆️</button></div>
     <div class="dpad-row">
-        <button class="dpad-btn" id="btnLeft" ontouchstart="moveStart('left')" ontouchend="moveEnd()">⬅️</button>
-        <button class="dpad-btn" id="btnDown" ontouchstart="moveStart('down')" ontouchend="moveEnd()">⬇️</button>
-        <button class="dpad-btn" id="btnRight" ontouchstart="moveStart('right')" ontouchend="moveEnd()">➡️</button>
+        <button class="dpad-btn" ontouchstart="moveStart('left')" ontouchend="moveEnd()">⬅️</button>
+        <button class="dpad-btn" ontouchstart="moveStart('down')" ontouchend="moveEnd()">⬇️</button>
+        <button class="dpad-btn" ontouchstart="moveStart('right')" ontouchend="moveEnd()">➡️</button>
     </div>
 </div>
 
 <script>
-const scene=new THREE.Scene();scene.background=new THREE.Color(0x050510);scene.fog=new THREE.Fog(0x050510,3,40);
-const camera=new THREE.PerspectiveCamera(75,window.innerWidth/window.innerHeight,0.1,1000);camera.position.set(0,1.5,0);
-const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setSize(window.innerWidth,window.innerHeight);document.body.appendChild(renderer.domElement);
+let lives=3,gameActive=false,moveDir={x:0,z:0},ghosts=[],particles=[],screamerTimeout;
 
-scene.add(new THREE.AmbientLight(0x111133,0.2));
-const flashlight=new THREE.SpotLight(0xffffcc,1,25,Math.PI/6,0.3,0.5);
-flashlight.position.set(0,1.5,0);camera.add(flashlight);
-const flashlightTarget=new THREE.Object3D();flashlightTarget.position.set(0,1.5,-10);camera.add(flashlightTarget);flashlight.target=flashlightTarget;
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x111118);scene.fog=new THREE.Fog(0x111118,2,25);
+const camera=new THREE.PerspectiveCamera(75,window.innerWidth/window.innerHeight,0.1,1000);camera.position.set(0,1.6,0);
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setSize(window.innerWidth,window.innerHeight);renderer.shadowMap.enabled=true;document.body.appendChild(renderer.domElement);
+
+scene.add(new THREE.AmbientLight(0x111133,0.15));
+const flashlight=new THREE.SpotLight(0xffffcc,0.5,20,Math.PI/7,0.3,0.6);flashlight.position.set(0,1.6,0);camera.add(flashlight);
+const ftarget=new THREE.Object3D();ftarget.position.set(0,1.6,-10);camera.add(ftarget);flashlight.target=ftarget;
 scene.add(camera);
 
-const ground=new THREE.Mesh(new THREE.PlaneGeometry(80,120),new THREE.MeshStandardMaterial({color:0x0a1a05,roughness:0.9}));
-ground.rotation.x=-Math.PI/2;ground.position.z=-40;ground.receiveShadow=true;scene.add(ground);
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(30,50),new THREE.MeshStandardMaterial({color:0x222233,roughness:0.7}));
+floor.rotation.x=-Math.PI/2;floor.position.z=-15;floor.receiveShadow=true;scene.add(floor);
 
-for(let i=0;i<50;i++){
-    let h=3+Math.random()*6;
-    let trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.25,h,6),new THREE.MeshStandardMaterial({color:0x1a0a05}));
-    trunk.position.set((Math.random()-0.5)*60,h/2,-5-Math.random()*80);trunk.castShadow=true;scene.add(trunk);
-    let leaves=new THREE.Mesh(new THREE.ConeGeometry(1+Math.random(),2+Math.random()*3,6),new THREE.MeshStandardMaterial({color:0x0a1a0a}));
-    leaves.position.copy(trunk.position);leaves.position.y+=h/2+0.5;scene.add(leaves);
-}
+const wallMat=new THREE.MeshStandardMaterial({color:0x333344,roughness:0.8});
+for(let i=0;i<8;i++){let w=new THREE.Mesh(new THREE.BoxGeometry(0.3,4,15),wallMat);w.position.set(-8,2,-10-i*8);w.castShadow=true;w.receiveShadow=true;scene.add(w);}
+for(let i=0;i<8;i++){let w=new THREE.Mesh(new THREE.BoxGeometry(0.3,4,15),wallMat);w.position.set(8,2,-10-i*8);w.castShadow=true;scene.add(w);}
 
-let ghosts=[];
-for(let i=0;i<6;i++){
-    let g=new THREE.Mesh(new THREE.SphereGeometry(0.5,8,8),new THREE.MeshBasicMaterial({color:0xaaffaa,transparent:true,opacity:0.5}));
-    g.position.set((Math.random()-0.5)*35,1+Math.random()*3,-15-Math.random()*40);
+for(let i=0;i<10;i++){let desk=new THREE.Mesh(new THREE.BoxGeometry(2,0.1,1),new THREE.MeshStandardMaterial({color:0x443322}));desk.position.set((Math.random()-0.5)*10,0.8,-5-Math.random()*30);desk.castShadow=true;desk.receiveShadow=true;scene.add(desk);}
+
+for(let i=0;i<5;i++){
+    let g=new THREE.Group();
+    let body=new THREE.Mesh(new THREE.ConeGeometry(0.4,1.5,8),new THREE.MeshBasicMaterial({color:0xaaffaa,transparent:true,opacity:0.4}));
+    body.position.y=0.7;g.add(body);
+    let head=new THREE.Mesh(new THREE.SphereGeometry(0.35,8,8),new THREE.MeshBasicMaterial({color:0xccffcc,transparent:true,opacity:0.5}));
+    head.position.y=1.5;g.add(head);
+    let eyeL=new THREE.Mesh(new THREE.SphereGeometry(0.08,4,4),new THREE.MeshBasicMaterial({color:0x000000}));
+    eyeL.position.set(-0.12,1.6,0.3);g.add(eyeL);
+    let eyeR=new THREE.Mesh(new THREE.SphereGeometry(0.08,4,4),new THREE.MeshBasicMaterial({color:0x000000}));
+    eyeR.position.set(0.12,1.6,0.3);g.add(eyeR);
+    g.position.set((Math.random()-0.5)*12,0,-10-Math.random()*25);
     g.velocity=new THREE.Vector3((Math.random()-0.5)*0.04,0,(Math.random()-0.5)*0.04);
     scene.add(g);ghosts.push(g);
 }
 
-let fear=0,gameActive=true,moveDir={x:0,z:0};
+function startCutscene(){
+    document.getElementById('lobby').style.display='none';
+    let cs=document.getElementById('cutscene');cs.classList.add('show');
+    let texts=['Офис опустел...','Все ушли.','Кроме тебя.','И чего-то ещё...','Оно приближается...'];
+    let i=0;
+    let iv=setInterval(()=>{document.getElementById('csText').textContent=texts[i]||'';i++;if(i>=texts.length){clearInterval(iv);setTimeout(()=>{cs.classList.remove('show');startGame();},1000);}},1200);
+}
+
+function startGame(){
+    lives=3;gameActive=true;ghosts.forEach(g=>{g.position.set((Math.random()-0.5)*12,0,-10-Math.random()*25);});
+    document.getElementById('gameUI').style.display='block';document.getElementById('crosshair').style.display='block';document.getElementById('dpad').style.display='block';
+    document.getElementById('lives').textContent='❤️'.repeat(lives);scheduleScreamer();
+}
+
+function scheduleScreamer(){if(gameActive){screamerTimeout=setTimeout(()=>{if(gameActive&&Math.random()<0.6)triggerScreamer();},10000+Math.random()*15000);}}
+function triggerScreamer(){document.getElementById('screamer').classList.add('show');gameActive=false;setTimeout(()=>{document.getElementById('screamer').classList.remove('show');gameActive=true;scheduleScreamer();},1200);}
+
+function takeDamage(){
+    lives--;document.getElementById('lives').textContent='❤️'.repeat(Math.max(0,lives));
+    if(lives<=0){gameOver();return;}triggerScreamer();
+}
+
+function gameOver(){gameActive=false;clearTimeout(screamerTimeout);document.getElementById('gameOverOverlay').classList.add('show');}
+function restartGame(){document.getElementById('gameOverOverlay').classList.remove('show');startGame();}
+function goToLobby(){document.getElementById('gameOverOverlay').classList.remove('show');document.getElementById('gameUI').style.display='none';document.getElementById('crosshair').style.display='none';document.getElementById('dpad').style.display='none';document.getElementById('lobby').style.display='flex';gameActive=false;}
 
 const lookArea=document.getElementById('lookArea');
-lookArea.addEventListener('touchmove',e=>{
-    e.preventDefault();
-    let touch=e.touches[0];
-    let cx=(touch.clientX/window.innerWidth)*2-1;
-    let cy=-(touch.clientY/window.innerHeight)*2+1;
-    camera.rotation.y+=cx*0.04;
-    camera.rotation.x=Math.max(-0.6,Math.min(0.4,camera.rotation.x+cy*0.03));
-    flashlightTarget.position.set(0+Math.sin(camera.rotation.y)*10,camera.position.y+cy*5,-10+Math.cos(camera.rotation.y)*10);
-});
+lookArea.addEventListener('touchmove',e=>{e.preventDefault();let t=e.touches[0];let cx=(t.clientX/window.innerWidth)*2-1;let cy=-(t.clientY/window.innerHeight)*2+1;camera.rotation.y+=cx*0.04;camera.rotation.x=Math.max(-0.5,Math.min(0.3,camera.rotation.x+cy*0.03));ftarget.position.set(Math.sin(camera.rotation.y)*10,camera.position.y+cy*5,-10+Math.cos(camera.rotation.y)*10);});
+document.addEventListener('mousemove',e=>{let cx=(e.clientX/window.innerWidth)*2-1;let cy=-(e.clientY/window.innerHeight)*2+1;camera.rotation.y+=cx*0.02;camera.rotation.x=Math.max(-0.5,Math.min(0.3,camera.rotation.x+cy*0.015));ftarget.position.set(Math.sin(camera.rotation.y)*10,camera.position.y+cy*5,-10+Math.cos(camera.rotation.y)*10);});
 
-document.addEventListener('mousemove',e=>{
-    let cx=(e.clientX/window.innerWidth)*2-1;
-    let cy=-(e.clientY/window.innerHeight)*2+1;
-    camera.rotation.y+=cx*0.02;
-    camera.rotation.x=Math.max(-0.6,Math.min(0.4,camera.rotation.x+cy*0.015));
-    flashlightTarget.position.set(0+Math.sin(camera.rotation.y)*10,camera.position.y+cy*5,-10+Math.cos(camera.rotation.y)*10);
-});
-
-function moveStart(dir){
-    if(dir==='up')moveDir.z=-0.3;
-    if(dir==='down')moveDir.z=0.3;
-    if(dir==='left')moveDir.x=-0.3;
-    if(dir==='right')moveDir.x=0.3;
-}
+function moveStart(d){if(d==='up')moveDir.z=-0.4;if(d==='down')moveDir.z=0.4;if(d==='left')moveDir.x=-0.4;if(d==='right')moveDir.x=0.4;}
 function moveEnd(){moveDir.x=0;moveDir.z=0;}
 
-setInterval(()=>{
-    if(moveDir.x!==0||moveDir.z!==0){
-        let dir=new THREE.Vector3(moveDir.x,0,moveDir.z);
-        dir.applyQuaternion(camera.quaternion);
-        camera.position.add(dir);
-    }
-},30);
+setInterval(()=>{if(moveDir.x!==0||moveDir.z!==0){let dir=new THREE.Vector3(moveDir.x,0,moveDir.z);dir.applyQuaternion(camera.quaternion);camera.position.add(dir);}},30);
+
+document.addEventListener('keydown',e=>{let s=0.3;if(e.key==='w'||e.key==='ArrowUp')moveStart('up');if(e.key==='s'||e.key==='ArrowDown')moveStart('down');if(e.key==='a'||e.key==='ArrowLeft')moveStart('left');if(e.key==='d'||e.key==='ArrowRight')moveStart('right');});
+document.addEventListener('keyup',moveEnd);
 
 function animate(){
     requestAnimationFrame(animate);
     if(gameActive){
         ghosts.forEach(g=>{
             g.position.add(g.velocity);
-            if(g.position.x>30||g.position.x<-30)g.velocity.x*=-1;
-            if(g.position.z>20||g.position.z<-80)g.velocity.z*=-1;
-            g.rotation.y+=0.02;
-            
-            let dist=camera.position.distanceTo(g.position);
-            if(dist<2.5){
-                fear+=0.8;
-                if(fear>8&&Math.random()<0.03){
-                    document.getElementById('screamer').classList.add('show');
-                    gameActive=false;
-                    setTimeout(()=>{document.getElementById('screamer').classList.remove('show');gameActive=true;fear=0;},1500);
-                }
-            }
+            if(Math.abs(g.position.x)>7)g.velocity.x*=-1;
+            if(g.position.z>5||g.position.z<-40)g.velocity.z*=-1;
+            g.rotation.y+=0.03;g.position.y=0+Math.sin(Date.now()*0.002+ghosts.indexOf(g))*0.5;
+            if(camera.position.distanceTo(g.position)<1.8){takeDamage();g.position.set((Math.random()-0.5)*12,0,-10-Math.random()*25);}
         });
-        fear=Math.max(0,fear-0.03);
-        let f=document.getElementById('fear');
-        if(fear<2)f.textContent='😊 Спокойно';
-        else if(fear<4)f.textContent='😨 Тревожно';
-        else if(fear<7)f.textContent='😱 Страшно';
-        else f.textContent='💀 УЖАС!';
+        if(Math.random()<0.02){flashlight.intensity=0.1;setTimeout(()=>flashlight.intensity=0.5,150);}
     }
     renderer.render(scene,camera);
 }

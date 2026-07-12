@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>👻 TomatiK Horror 3D</title>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{background:#000;overflow:hidden;font-family:Arial;user-select:none;touch-action:manipulation;height:100vh}
+        canvas{display:block}
+        .ui{position:fixed;top:15px;left:0;right:0;text-align:center;z-index:10;pointer-events:none;color:white}
+        .fear{font-size:30px;font-weight:bold;color:#ff4444}
+        .info{font-size:14px;color:#888;margin-top:5px}
+        .crosshair{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:20;font-size:30px}
+        .screamer{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.9);z-index:50;display:none;align-items:center;justify-content:center;flex-direction:column}
+        .screamer.show{display:flex}
+        .screamer .ghost{font-size:150px;animation:shake 0.1s infinite}
+        .screamer .text{color:#f00;font-size:40px;font-weight:bold;margin-top:20px}
+        @keyframes shake{0%{transform:translate(0,0)}25%{transform:translate(-10px,10px)}50%{transform:translate(10px,-10px)}75%{transform:translate(-10px,-10px)}100%{transform:translate(10px,10px)}}
+        .controls{position:fixed;bottom:20px;left:0;right:0;z-index:30;display:flex;justify-content:space-around;padding:0 10px;pointer-events:none}
+        .c-btn{width:55px;height:55px;border-radius:50%;background:rgba(255,255,255,0.2);border:2px solid rgba(255,255,255,0.5);color:white;font-size:20px;display:flex;align-items:center;justify-content:center;pointer-events:auto;cursor:pointer}
+        .c-btn:active{background:rgba(255,68,68,0.6)}
+        .joystick{position:fixed;bottom:30px;left:30px;width:100px;height:100px;z-index:30;pointer-events:auto}
+        .j-base{width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.4)}
+        .j-thumb{position:absolute;top:35px;left:35px;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,0.7)}
+    </style>
+</head>
+<body>
+
+<div class="crosshair" id="crosshair">🔦</div>
+<div class="ui">
+    <div class="fear" id="fear">😊 Спокойно</div>
+    <div class="info" id="info">Найди выход из леса...</div>
+</div>
+
+<div class="screamer" id="screamer">
+    <div class="ghost">👻</div>
+    <div class="text">БУ!</div>
+</div>
+
+<div class="controls">
+    <div class="c-btn" onclick="movePlayer(0,0,0.5)">⬆️</div>
+    <div class="c-btn" onclick="movePlayer(-0.5,0,0)">⬅️</div>
+    <div class="c-btn" onclick="movePlayer(0.5,0,0)">➡️</div>
+    <div class="c-btn" onclick="movePlayer(0,0,-0.5)">⬇️</div>
+</div>
+
+<script>
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x050510);scene.fog=new THREE.Fog(0x050510,5,50);
+const camera=new THREE.PerspectiveCamera(75,window.innerWidth/window.innerHeight,0.1,1000);camera.position.set(0,1.5,0);
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setSize(window.innerWidth,window.innerHeight);renderer.shadowMap.enabled=true;document.body.appendChild(renderer.domElement);
+
+scene.add(new THREE.AmbientLight(0x111133,0.3));
+const flashlight=new THREE.SpotLight(0xffffaa,0.8,30,Math.PI/8,0.2,0.5);
+flashlight.position.set(0,1.5,0);
+flashlight.target.position.set(0,1.5,-10);
+camera.add(flashlight);
+camera.add(flashlight.target);
+scene.add(camera);
+
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(80,120),new THREE.MeshStandardMaterial({color:0x0a1a05,roughness:0.9}));
+ground.rotation.x=-Math.PI/2;ground.position.z=-40;ground.receiveShadow=true;scene.add(ground);
+
+for(let i=0;i<60;i++){
+    let h=3+Math.random()*8;
+    let trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.25,h,6),new THREE.MeshStandardMaterial({color:0x1a0a05}));
+    trunk.position.set((Math.random()-0.5)*60,h/2,-5-Math.random()*80);
+    trunk.castShadow=true;trunk.receiveShadow=true;scene.add(trunk);
+    let leaves=new THREE.Mesh(new THREE.ConeGeometry(1+Math.random()*2,2+Math.random()*4,6),new THREE.MeshStandardMaterial({color:0x0a1a0a}));
+    leaves.position.copy(trunk.position);leaves.position.y+=h/2+0.5;scene.add(leaves);
+}
+
+let ghosts=[];
+for(let i=0;i<5;i++){
+    let g=new THREE.Mesh(new THREE.SphereGeometry(0.5,8,8),new THREE.MeshBasicMaterial({color:0xaaffaa,transparent:true,opacity:0.6}));
+    g.position.set((Math.random()-0.5)*40,1+Math.random()*3,-20-Math.random()*40);
+    g.velocity=new THREE.Vector3((Math.random()-0.5)*0.03,0,(Math.random()-0.5)*0.03);
+    scene.add(g);ghosts.push(g);
+}
+
+let fear=0,gameActive=true;
+document.addEventListener('mousemove',e=>{
+    let cx=(e.clientX/window.innerWidth)*2-1;
+    let cy=-(e.clientY/window.innerHeight)*2+1;
+    camera.rotation.y+=cx*0.02;camera.rotation.x=Math.max(-0.5,Math.min(0.3,camera.rotation.x+cy*0.01));
+    flashlight.target.position.set(camera.position.x+cx*10,camera.position.y+cy*5,camera.position.z-10);
+});
+
+document.addEventListener('touchmove',e=>{
+    e.preventDefault();
+    let cx=(e.touches[0].clientX/window.innerWidth)*2-1;
+    let cy=-(e.touches[0].clientY/window.innerHeight)*2+1;
+    camera.rotation.y+=cx*0.03;camera.rotation.x=Math.max(-0.5,Math.min(0.3,camera.rotation.x+cy*0.02));
+    flashlight.target.position.set(camera.position.x+cx*10,camera.position.y+cy*5,camera.position.z-10);
+});
+
+function movePlayer(dx,dy,dz){
+    let dir=new THREE.Vector3(dx,dy,dz);
+    dir.applyQuaternion(camera.quaternion);
+    camera.position.add(dir);
+    flashlight.target.position.add(dir);
+}
+
+document.addEventListener('keydown',e=>{
+    let speed=0.3;
+    if(e.key==='w'||e.key==='ArrowUp')movePlayer(0,0,-speed);
+    if(e.key==='s'||e.key==='ArrowDown')movePlayer(0,0,speed);
+    if(e.key==='a'||e.key==='ArrowLeft')movePlayer(-speed,0,0);
+    if(e.key==='d'||e.key==='ArrowRight')movePlayer(speed,0,0);
+});
+
+function animate(){
+    requestAnimationFrame(animate);
+    if(gameActive){
+        ghosts.forEach(g=>{
+            g.position.add(g.velocity);
+            if(g.position.x>30||g.position.x<-30)g.velocity.x*=-1;
+            if(g.position.z>20||g.position.z<-80)g.velocity.z*=-1;
+            g.rotation.y+=0.02;g.rotation.x+=0.01;
+            
+            let dist=camera.position.distanceTo(g.position);
+            if(dist<3){
+                fear+=0.5;
+                if(fear>10&&Math.random()<0.02){
+                    document.getElementById('screamer').classList.add('show');
+                    gameActive=false;
+                    setTimeout(()=>document.getElementById('screamer').classList.remove('show'),2000);
+                }
+            }
+        });
+        
+        fear=Math.max(0,fear-0.05);
+        let fearEl=document.getElementById('fear');
+        if(fear<2)fearEl.textContent='😊 Спокойно';
+        else if(fear<4)fearEl.textContent='😨 Тревожно';
+        else if(fear<7)fearEl.textContent='😱 Страшно';
+        else fearEl.textContent='💀 УЖАС!';
+    }
+    renderer.render(scene,camera);
+}
+animate();
+
+setInterval(()=>{if(gameActive&&Math.random()<0.3){let g=ghosts[Math.floor(Math.random()*ghosts.length)];g.velocity.multiplyScalar(2);setTimeout(()=>g.velocity.divideScalar(2),500);}},3000);
+
+window.addEventListener('resize',()=>{camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight);});
+</script>
+</body>
+</html>

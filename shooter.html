@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>🔫 TomatiK Strike 3D v2</title>
+    <title>🔫 TomatiK Strike 3D</title>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
@@ -13,12 +13,10 @@
         .screen-overlay h1{color:#ff4444;font-size:30px;margin-bottom:10px}
         .screen-overlay p{color:#ccc;font-size:14px;margin-bottom:30px}
         .screen-btns{display:flex;gap:20px}
-        .screen-btn{width:120px;height:120px;border-radius:20px;background:rgba(255,255,255,0.1);border:3px solid #ff4444;color:white;font-size:16px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;transition:all 0.3s}
-        .screen-btn:hover,.screen-btn:active{background:rgba(255,68,68,0.3);transform:scale(1.05)}
+        .screen-btn{width:120px;height:120px;border-radius:20px;background:rgba(255,255,255,0.1);border:3px solid #ff4444;color:white;font-size:16px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
         .screen-btn .icon{font-size:50px}
         .ui{position:fixed;top:15px;left:0;right:0;text-align:center;z-index:10;pointer-events:none}
         .score{font-size:40px;font-weight:bold;color:#ff8800}
-        .wave{color:white;font-size:14px;margin-top:5px}
         .money{font-size:16px;color:#ffaa00}
         .crosshair{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:20;color:#f00;font-size:24px}
         .killfeed{position:fixed;top:80px;right:20px;z-index:10;pointer-events:none}
@@ -50,7 +48,7 @@
 </div>
 
 <div class="crosshair" id="crosshair" style="display:none">➕</div>
-<div class="ui"><div class="score" id="score">0</div><div class="wave" id="wave">Волна 1</div><div class="money" id="money">💰 800</div></div>
+<div class="ui"><div class="score" id="score">0</div><div class="money" id="money">💰 800</div></div>
 <div class="killfeed" id="killfeed"></div>
 <div class="mobile-controls" id="mobileControls">
     <button class="ctrl-btn" onclick="throwGrenade()">💣</button>
@@ -66,16 +64,17 @@
 <button class="shop-btn" onclick="openShop()">🛒</button>
 <div class="record-overlay" id="recordOverlay">
     <h2>🏆 НОВЫЙ РЕКОРД!</h2>
-    <p id="recordText">Волна: 1 | Очки: 0</p>
+    <p id="recordText">Очки: 0</p>
     <button onclick="restartGame()">🔄 ИГРАТЬ ЕЩЁ</button>
 </div>
 
 <script>
-let controlType='',score=0,wave=1,money=800,waveKills=0,record=parseInt(localStorage.getItem('shooter_record')||'0');
+let controlType='',score=0,money=800,record=parseInt(localStorage.getItem('shooter_record')||'0');
 let tomatoes=[],bombs=[],particles=[],grenades=[];
 let weapon='usp',ammo=12,maxAmmo=24,canShoot=true,grenadesCount=0,hasArmor=false;
 let gameActive=false,isPhone=false;
 let mouseX=0,mouseY=0;
+let spawnInterval;
 
 const weapons={usp:{name:'USP-S',ammo:12,maxAmmo:24,damage:1,fireRate:150,price:0},ak:{name:'AK-47',ammo:30,maxAmmo:90,damage:2,fireRate:100,price:500},awp:{name:'AWP',ammo:5,maxAmmo:15,damage:5,fireRate:1500,price:1500}};
 
@@ -104,35 +103,55 @@ function startGame(type){
     document.getElementById('startScreen').style.display='none';
     document.getElementById('crosshair').style.display='block';
     if(isPhone){document.getElementById('mobileControls').style.display='flex';document.getElementById('weaponSelect').style.display='flex';document.getElementById('ammoDisplay').style.display='block';}
-    gameActive=true;score=0;wave=1;waveKills=0;money=800;grenadesCount=0;hasArmor=false;weapon='usp';ammo=12;maxAmmo=24;
-    document.getElementById('score').textContent='0';document.getElementById('wave').textContent='Волна 1';document.getElementById('money').textContent='💰 800';document.getElementById('ammoDisplay').textContent='12/24';
+    gameActive=true;score=0;money=800;grenadesCount=0;hasArmor=false;weapon='usp';ammo=12;maxAmmo=24;
+    document.getElementById('score').textContent='0';document.getElementById('money').textContent='💰 800';document.getElementById('ammoDisplay').textContent='12/24';
     tomatoes.forEach(t=>scene.remove(t.mesh));bombs.forEach(b=>scene.remove(b.mesh));particles.forEach(p=>scene.remove(p));tomatoes=[];bombs=[];particles=[];
-    spawnWave();
+    if(spawnInterval)clearInterval(spawnInterval);
+    startSpawning();
 }
 
-function spawnWave(){for(let i=0;i<3+wave*2;i++){let x=(Math.random()-0.5)*20;let y=1+Math.random()*4;let z=-20-Math.random()*30;tomatoes.push({mesh:createTomato(x,y,z),speed:0.03+Math.random()*0.05+wave*0.01,hp:1+Math.floor(wave/3)});}}
+function startSpawning(){
+    spawnInterval=setInterval(()=>{
+        if(!gameActive)return;
+        let count=1+Math.floor(Math.random()*3);
+        for(let i=0;i<count;i++){
+            tomatoes.push({mesh:createTomato((Math.random()-0.5)*25,1+Math.random()*5,-20-Math.random()*30),speed:0.03+Math.random()*0.06,hp:1});
+        }
+    },1500);
+}
 
-function createTomato(x,y,z){let g=new THREE.Group();g.add(new THREE.Mesh(new THREE.SphereGeometry(0.4,8,8),new THREE.MeshStandardMaterial({color:wave>5?0xff4444:wave>3?0xff8800:0xff4444})));g.position.set(x,y,z);scene.add(g);return g;}
+function createTomato(x,y,z){let g=new THREE.Group();g.add(new THREE.Mesh(new THREE.SphereGeometry(0.4,8,8),new THREE.MeshStandardMaterial({color:0xff4444})));g.position.set(x,y,z);scene.add(g);return g;}
 
 function createExplosion(pos,color){for(let i=0;i<12;i++){let p=new THREE.Mesh(new THREE.SphereGeometry(0.06,4,4),new THREE.MeshBasicMaterial({color:color}));p.position.copy(pos);p.velocity=new THREE.Vector3((Math.random()-0.5)*4,Math.random()*4,(Math.random()-0.5)*4);p.life=1;scene.add(p);particles.push(p);}}
 
-function addKill(text){let f=document.getElementById('killfeed');let e=document.createElement('div');e.className='kill';e.textContent=text;f.appendChild(e);setTimeout(()=>e.remove(),3000);if(text.includes('🍅')){money+=100;waveKills++;}}
+function addKill(text){let f=document.getElementById('killfeed');let e=document.createElement('div');e.className='kill';e.textContent=text;f.appendChild(e);setTimeout(()=>e.remove(),3000);if(text.includes('🍅'))money+=100;}
 
 function switchWeapon(w){weapon=w;ammo=weapons[w].ammo;maxAmmo=weapons[w].maxAmmo;if(w==='usp')createUSP();if(w==='ak')createAK();if(w==='awp')createAWP();updateHUD();document.querySelectorAll('.weapon-btn').forEach((b,i)=>b.classList.toggle('active',['usp','ak','awp'].indexOf(w)===i));}
 function reload(){ammo=weapons[weapon].ammo;maxAmmo-=weapons[weapon].ammo;if(maxAmmo<0)maxAmmo=0;updateHUD();}
-function updateHUD(){document.getElementById('ammoDisplay').textContent=ammo+'/'+maxAmmo;document.getElementById('money').textContent='💰 '+money;document.getElementById('score').textContent=score;document.getElementById('wave').textContent='Волна '+wave;}
+function updateHUD(){document.getElementById('ammoDisplay').textContent=ammo+'/'+maxAmmo;document.getElementById('money').textContent='💰 '+money;document.getElementById('score').textContent=score;}
 
 document.addEventListener('mousemove',e=>{if(!isPhone){mouseX=e.clientX;mouseY=e.clientY;document.getElementById('crosshair').style.left=e.clientX+'px';document.getElementById('crosshair').style.top=e.clientY+'px';}});
 document.addEventListener('touchmove',e=>{if(isPhone){mouseX=e.touches[0].clientX;mouseY=e.touches[0].clientY;document.getElementById('crosshair').style.left=e.touches[0].clientX+'px';document.getElementById('crosshair').style.top=e.touches[0].clientY+'px';}});
 
-document.addEventListener('click',()=>{if(!gameActive||!canShoot||ammo<=0)return;ammo--;canShoot=false;updateHUD();gunGroup.position.z=-0.8;setTimeout(()=>gunGroup.position.z=-0.7,80);
-    let hit=false;
-    for(let i=tomatoes.length-1;i>=0;i--){let t=tomatoes[i];let sp=t.mesh.position.clone().project(camera);let dx=sp.x-(mouseX/window.innerWidth)*2+1;let dy=sp.y+(mouseY/window.innerHeight)*2-1;if(Math.abs(dx)<0.15&&Math.abs(dy)<0.15){t.hp-=weapons[weapon].damage;if(t.hp<=0){score+=10;createExplosion(t.mesh.position,0xff4444);scene.remove(t.mesh);tomatoes.splice(i,1);addKill('🍅 Томат');}hit=true;break;}}
-    if(!hit)comboCount=0;try{let a=new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=');a.play();}catch(e){}
+document.addEventListener('click',()=>{
+    if(!gameActive||!canShoot||ammo<=0)return;
+    ammo--;canShoot=false;updateHUD();
+    gunGroup.position.z=-0.8;setTimeout(()=>gunGroup.position.z=-0.7,80);
+    for(let i=tomatoes.length-1;i>=0;i--){
+        let t=tomatoes[i];
+        let sp=t.mesh.position.clone().project(camera);
+        let dx=sp.x-(mouseX/window.innerWidth)*2+1;
+        let dy=sp.y+(mouseY/window.innerHeight)*2-1;
+        if(Math.abs(dx)<0.15&&Math.abs(dy)<0.15){
+            t.hp-=weapons[weapon].damage;
+            if(t.hp<=0){score+=10;createExplosion(t.mesh.position,0xff4444);scene.remove(t.mesh);tomatoes.splice(i,1);addKill('🍅 Томат');if(score>record){record=score;localStorage.setItem('shooter_record',record);}}
+            break;
+        }
+    }
+    try{new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=').play();}catch(e){}
     setTimeout(()=>canShoot=true,weapons[weapon].fireRate);
 });
 
-let comboCount=0;
 document.addEventListener('touchstart',e=>{e.preventDefault();document.dispatchEvent(new Event('click'));});
 
 let shootInterval;
@@ -145,10 +164,7 @@ function openShop(){let msg='🛒 МАГАЗИН\n💰 Деньги: '+money+'\n
 
 function moveObjects(){
     tomatoes.forEach(t=>{t.mesh.position.z+=t.speed;t.mesh.rotation.x+=0.02;t.mesh.rotation.y+=0.01;});
-    bombs.forEach(b=>{b.mesh.position.z+=b.speed;});
     tomatoes=tomatoes.filter(t=>{if(t.mesh.position.z>3){if(!hasArmor){money-=30;}else{hasArmor=false;}scene.remove(t.mesh);return false;}return true;});
-    bombs=bombs.filter(b=>{if(b.mesh.position.z>3){scene.remove(b.mesh);return false;}return true;});
-    if(tomatoes.length===0){wave++;waveKills=0;document.getElementById('wave').textContent='Волна '+wave;if(score>record){record=score;localStorage.setItem('shooter_record',record);document.getElementById('recordText').textContent='Волна: '+wave+' | Очки: '+score;document.getElementById('recordOverlay').classList.add('show');gameActive=false;}else{spawnWave();}}
 }
 
 function animate(){requestAnimationFrame(animate);if(gameActive)moveObjects();particles.forEach(p=>{p.position.add(p.velocity.clone().multiplyScalar(0.1));p.velocity.y-=0.05;p.life-=0.02;p.scale.setScalar(p.life);});particles=particles.filter(p=>{if(p.life<=0){scene.remove(p);return false;}return true;});grenades.forEach(g=>{g.position.add(g.velocity.clone().multiplyScalar(0.3));g.velocity.y-=0.02;});renderer.render(scene,camera);}

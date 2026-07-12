@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>⚔️ 3D Дуэль: Шеф vs Томатик</title>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{background:#000;overflow:hidden;font-family:Arial;user-select:none;touch-action:manipulation;height:100vh}
+        canvas{display:block}
+        .ui{position:fixed;top:15px;left:0;right:0;text-align:center;z-index:10;pointer-events:none;color:white;font-size:20px}
+        .lives{display:flex;justify-content:center;gap:60px;margin-top:10px}
+        .p-lives{color:#4488ff;font-size:22px}
+        .b-lives{color:#ff4444;font-size:22px}
+        .msg{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:45px;font-weight:bold;pointer-events:none;z-index:20;display:none;text-align:center}
+        .msg.show{display:block}
+        .msg.win{color:#ffaa00;text-shadow:0 0 30px #ff8800}
+        .msg.lose{color:#ff0000;text-shadow:0 0 30px #ff0000}
+        .restart-btn{position:fixed;bottom:40px;left:50%;transform:translateX(-50%);padding:15px 40px;background:#ff4444;color:white;border:none;border-radius:25px;font-size:18px;cursor:pointer;z-index:30;display:none}
+        .restart-btn.show{display:block}
+    </style>
+</head>
+<body>
+
+<div class="ui">
+    <div>⚔️ 3D ДУЭЛЬ: ШЕФ vs ТОМАТИК</div>
+    <div class="lives">
+        <div class="p-lives" id="playerLives">👑 Шеф: ❤️❤️❤️</div>
+        <div class="b-lives" id="botLives">🍅 Томатик: ❤️❤️❤️</div>
+    </div>
+</div>
+<div class="msg" id="msg"></div>
+<button class="restart-btn" id="restartBtn" onclick="restart()">🔄 РЕВАНШ!</button>
+
+<script>
+// СОСТОЯНИЕ
+let playerLives=3,botLives=3,gameActive=true;
+let playerTomatoes=[],botTomatoes=[],particles=[];
+let playerPos={x:-8,z:0},botPos={x:8,z:0};
+let moveF=false,moveB=false,moveL=false,moveR=false;
+let mouseX=window.innerWidth/2,mouseY=window.innerHeight/2;
+let botShootTimer=0;
+
+// THREE.JS
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x1a1a3e);
+const camera=new THREE.PerspectiveCamera(60,window.innerWidth/window.innerHeight,0.1,1000);
+camera.position.set(playerPos.x,8,playerPos.z+10);
+camera.lookAt(playerPos.x,0,playerPos.z);
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.shadowMap.enabled=true;
+document.body.appendChild(renderer.domElement);
+
+// СВЕТ
+scene.add(new THREE.AmbientLight(0x334466,0.5));
+const light=new THREE.DirectionalLight(0xffffff,1);
+light.position.set(0,15,0);scene.add(light);
+
+// АРЕНА
+const arena=new THREE.Mesh(new THREE.CircleGeometry(15,32),new THREE.MeshStandardMaterial({color:0x2a2a4a,roughness:0.8}));
+arena.rotation.x=-Math.PI/2;arena.receiveShadow=true;scene.add(arena);
+
+// ОГРАЖДЕНИЕ
+const fenceMat=new THREE.MeshStandardMaterial({color:0x555555,transparent:true,opacity:0.5});
+for(let i=0;i<16;i++){
+    let angle=i/16*Math.PI*2;
+    let post=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,2),fenceMat);
+    post.position.set(Math.cos(angle)*14,1,Math.sin(angle)*14);scene.add(post);
+}
+
+// ИГРОК (ШЕФ) - синий
+const playerGroup=new THREE.Group();
+const pBody=new THREE.Mesh(new THREE.CapsuleGeometry(0.4,1.5,4,8),new THREE.MeshStandardMaterial({color:0x4488ff}));
+pBody.position.y=0.9;playerGroup.add(pBody);
+const pHead=new THREE.Mesh(new THREE.SphereGeometry(0.3,8,8),new THREE.MeshStandardMaterial({color:0xffcc99}));
+pHead.position.y=2;playerGroup.add(pHead);
+playerGroup.position.set(playerPos.x,0,playerPos.z);scene.add(playerGroup);
+
+// БОТ (ТОМАТИК) - красный
+const botGroup=new THREE.Group();
+const bBody=new THREE.Mesh(new THREE.CapsuleGeometry(0.4,1.5,4,8),new THREE.MeshStandardMaterial({color:0xff4444}));
+bBody.position.y=0.9;botGroup.add(bBody);
+const bHead=new THREE.Mesh(new THREE.SphereGeometry(0.3,8,8),new THREE.MeshStandardMaterial({color:0xffcc99}));
+bHead.position.y=2;botGroup.add(bHead);
+botGroup.position.set(botPos.x,0,botPos.z);scene.add(botGroup);
+
+// УПРАВЛЕНИЕ
+document.addEventListener('keydown',e=>{
+    if(e.key==='w')moveF=true;if(e.key==='s')moveB=true;
+    if(e.key==='a')moveL=true;if(e.key==='d')moveR=true;
+    if(e.key===' '||e.key==='Spacebar'){e.preventDefault();shootPlayer();}
+});
+document.addEventListener('keyup',e=>{
+    if(e.key==='w')moveF=false;if(e.key==='s')moveB=false;
+    if(e.key==='a')moveL=false;if(e.key==='d')moveR=false;
+});
+document.addEventListener('click',shootPlayer);
+document.addEventListener('touchstart',e=>{e.preventDefault();shootPlayer();});
+document.addEventListener('mousemove',e=>{mouseX=e.clientX;mouseY=e.clientY;});
+
+// СТРЕЛЬБА
+function shootPlayer(){
+    if(!gameActive)return;
+    let tomato=new THREE.Mesh(new THREE.SphereGeometry(0.2,8,8),new THREE.MeshStandardMaterial({color:0xff4444}));
+    tomato.position.copy(playerGroup.position).add(new THREE.Vector3(0,1.5,0));
+    let dir=new THREE.Vector3(botGroup.position.x-playerGroup.position.x,0.2,botGroup.position.z-playerGroup.position.z).normalize();
+    tomato.velocity=dir.multiplyScalar(0.5);
+    playerTomatoes.push(tomato);scene.add(tomato);
+}
+
+function botShoot(){
+    if(!gameActive)return;
+    let tomato=new THREE.Mesh(new THREE.SphereGeometry(0.2,8,8),new THREE.MeshStandardMaterial({color:0x4488ff}));
+    tomato.position.copy(botGroup.position).add(new THREE.Vector3(0,1.5,0));
+    let dir=new THREE.Vector3(playerGroup.position.x-botGroup.position.x,0.2,playerGroup.position.z-botGroup.position.z).normalize();
+    tomato.velocity=dir.multiplyScalar(0.4);
+    botTomatoes.push(tomato);scene.add(tomato);
+}
+
+function updateUI(){
+    document.getElementById('playerLives').textContent='👑 Шеф: '+'❤️'.repeat(Math.max(0,playerLives));
+    document.getElementById('botLives').textContent='🍅 Томатик: '+'❤️'.repeat(Math.max(0,botLives));
+}
+
+function endGame(winner){
+    gameActive=false;
+    let msg=document.getElementById('msg');msg.classList.add('show');
+    if(winner==='player'){msg.textContent='👑 ШЕФ ПОБЕДИЛ!';msg.className='msg show win';}
+    else{msg.textContent='🍅 ТОМАТИК ПОБЕДИЛ!';msg.className='msg show lose';}
+    document.getElementById('restartBtn').classList.add('show');
+}
+
+function restart(){
+    playerLives=3;botLives=3;gameActive=true;
+    playerTomatoes.forEach(t=>scene.remove(t));botTomatoes.forEach(t=>scene.remove(t));
+    playerTomatoes=[];botTomatoes=[];particles=[];
+    playerGroup.position.set(-8,0,0);botGroup.position.set(8,0,0);
+    document.getElementById('msg').classList.remove('show');
+    document.getElementById('restartBtn').classList.remove('show');updateUI();
+}
+
+// АНИМАЦИЯ
+function animate(){
+    requestAnimationFrame(animate);
+    if(gameActive){
+        // Движение игрока
+        let speed=0.2;
+        if(moveF)playerGroup.position.z-=speed;if(moveB)playerGroup.position.z+=speed;
+        if(moveL)playerGroup.position.x-=speed;if(moveR)playerGroup.position.x+=speed;
+        let pDist=Math.hypot(playerGroup.position.x,playerGroup.position.z);
+        if(pDist>13){playerGroup.position.x/=pDist/13;playerGroup.position.z/=pDist/13;}
+        
+        // Движение бота
+        let dx=playerGroup.position.x-botGroup.position.x;
+        let dz=playerGroup.position.z-botGroup.position.z;
+        let dist=Math.hypot(dx,dz);
+        if(dist>8){botGroup.position.x+=dx*0.03;botGroup.position.z+=dz*0.03;}
+        if(dist<5){botGroup.position.x-=dx*0.05;botGroup.position.z-=dz*0.05;}
+        let bDist=Math.hypot(botGroup.position.x,botGroup.position.z);
+        if(bDist>13){botGroup.position.x/=bDist/13;botGroup.position.z/=bDist/13;}
+        botGroup.lookAt(playerGroup.position);
+        
+        // Стрельба бота
+        botShootTimer++;if(botShootTimer>50){botShoot();botShootTimer=0;}
+        
+        // Томаты игрока
+        playerTomatoes.forEach((t,i)=>{
+            t.position.add(t.velocity);
+            if(t.position.distanceTo(botGroup.position)<0.8){botLives--;scene.remove(t);playerTomatoes.splice(i,1);updateUI();if(botLives<=0)endGame('player');}
+            else if(t.position.length()>15){scene.remove(t);playerTomatoes.splice(i,1);}
+        });
+        
+        // Томаты бота
+        botTomatoes.forEach((t,i)=>{
+            t.position.add(t.velocity);
+            if(t.position.distanceTo(playerGroup.position)<0.8){playerLives--;scene.remove(t);botTomatoes.splice(i,1);updateUI();if(playerLives<=0)endGame('bot');}
+            else if(t.position.length()>15){scene.remove(t);botTomatoes.splice(i,1);}
+        });
+        
+        // Камера
+        camera.position.x=playerGroup.position.x;
+        camera.position.z=playerGroup.position.z+10;
+        camera.position.y=8;
+        camera.lookAt(playerGroup.position.x,0,playerGroup.position.z);
+    }
+    renderer.render(scene,camera);
+}
+animate();
+updateUI();
+window.addEventListener('resize',()=>{camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight);});
+</script>
+</body>
+</html>

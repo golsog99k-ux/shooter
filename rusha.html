@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐱 Руша ловит мышек</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{background:#1a1a2e;font-family:Arial;height:100vh;overflow:hidden;user-select:none;touch-action:manipulation}
+        .ui{position:fixed;top:10px;left:0;right:0;text-align:center;z-index:10;pointer-events:none}
+        .score{font-size:45px;font-weight:bold;color:#ff8800}
+        .record{font-size:14px;color:#888}
+        .rusha{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);font-size:80px;cursor:pointer;transition:left 0.1s;z-index:5}
+        .mouse-item{position:absolute;font-size:40px;cursor:pointer;animation:fall linear forwards;pointer-events:auto;z-index:3}
+        @keyframes fall{0%{top:-50px}100%{top:110%}}
+        .bomb{position:absolute;font-size:35px;cursor:pointer;animation:fall linear forwards;pointer-events:auto;z-index:3}
+        .msg{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:30px;font-weight:bold;pointer-events:none;animation:msgAnim 1s forwards}
+        @keyframes msgAnim{0%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-100%) scale(1.5)}}
+        .restart-btn{position:fixed;bottom:50%;left:50%;transform:translate(-50%,50%);padding:12px 30px;background:#ff4444;color:white;border:none;border-radius:20px;font-size:16px;cursor:pointer;z-index:20;display:none}
+    </style>
+</head>
+<body>
+
+<div class="ui">
+    <div class="score" id="score">0 🐭</div>
+    <div class="record" id="record">Рекорд: 0</div>
+</div>
+
+<div class="rusha" id="rusha" style="left:50%">🐱</div>
+<button class="restart-btn" id="restartBtn" onclick="restartGame()">🔄 ИГРАТЬ ЕЩЁ</button>
+
+<script>
+let score=0,gameActive=true,record=parseInt(localStorage.getItem('rusha_mouse_record')||'0');
+let rushaX=window.innerWidth/2;
+document.getElementById('record').textContent='Рекорд: '+record;
+
+document.addEventListener('mousemove',e=>{rushaX=e.clientX;document.getElementById('rusha').style.left=rushaX+'px';});
+document.addEventListener('touchmove',e=>{e.preventDefault();rushaX=e.touches[0].clientX;document.getElementById('rusha').style.left=rushaX+'px';});
+
+function spawnMouse(){
+    if(!gameActive)return;
+    let isBomb=Math.random()<0.15;
+    let el=document.createElement('div');
+    el.className=isBomb?'bomb':'mouse-item';
+    el.textContent=isBomb?'💣':'🐭';
+    el.style.left=Math.random()*90+'%';
+    el.style.animationDuration=(1.5+Math.random()*2)+'s';
+    
+    el.addEventListener('click',function(e){
+        e.stopPropagation();
+        if(!gameActive)return;
+        if(isBomb){
+            score-=10;showMsg('-10 💣','#ff0000');
+            document.getElementById('rusha').textContent='😾';
+            setTimeout(()=>document.getElementById('rusha').textContent='🐱',300);
+        }else{
+            score+=5;showMsg('+5 🐭','#ff8800');
+            document.getElementById('rusha').textContent='😸';
+            setTimeout(()=>document.getElementById('rusha').textContent='🐱',200);
+        }
+        updateScore();this.remove();
+    });
+    
+    let checkInterval=setInterval(()=>{
+        if(!el.parentNode){clearInterval(checkInterval);return;}
+        let mx=parseFloat(el.style.left)/100*window.innerWidth;
+        if(Math.abs(mx-rushaX)<50&&parseFloat(el.style.top||el.getBoundingClientRect().top)>window.innerHeight-150){
+            el.click();clearInterval(checkInterval);
+        }
+    },50);
+    
+    document.body.appendChild(el);
+    setTimeout(()=>{if(el.parentNode)el.remove();},4000);
+}
+
+function showMsg(text,color){let m=document.createElement('div');m.className='msg';m.textContent=text;m.style.color=color;document.body.appendChild(m);setTimeout(()=>m.remove(),1000);}
+function updateScore(){score=Math.max(0,score);document.getElementById('score').textContent=score+' 🐭';if(score>record){record=score;localStorage.setItem('rusha_mouse_record',record);document.getElementById('record').textContent='Рекорд: '+record+' 🏆';}}
+function gameOver(){gameActive=false;document.getElementById('restartBtn').style.display='block';}
+function restartGame(){score=0;gameActive=true;updateScore();document.getElementById('restartBtn').style.display='none';document.querySelectorAll('.mouse-item,.bomb').forEach(e=>e.remove());}
+
+setInterval(spawnMouse,800);
+setTimeout(gameOver,60000);
+updateScore();
+</script>
+</body>
+</html>

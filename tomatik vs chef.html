@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>⚔️ 3D Дуэль: Шеф vs Томатик</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{background:#000;overflow:hidden;font-family:Arial;user-select:none;touch-action:manipulation;height:100vh}
+        canvas{display:block}
+        .ui{position:fixed;top:15px;left:0;right:0;text-align:center;z-index:10;pointer-events:none;color:white;font-size:20px}
+        .lives{display:flex;justify-content:center;gap:60px;margin-top:10px}
+        .p-lives{color:#4488ff;font-size:22px}
+        .b-lives{color:#ff4444;font-size:22px}
+        .msg{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:45px;font-weight:bold;pointer-events:none;z-index:20;display:none;text-align:center}
+        .msg.show{display:block}.msg.win{color:#ffaa00}.msg.lose{color:#ff0000}
+        .restart-btn{position:fixed;bottom:40px;left:50%;transform:translateX(-50%);padding:15px 40px;background:#ff4444;color:white;border:none;border-radius:25px;font-size:18px;cursor:pointer;z-index:30;display:none}
+        .restart-btn.show{display:block}
+    </style>
+</head>
+<body>
+<div class="ui"><div>⚔️ 3D ДУЭЛЬ</div><div class="lives"><div class="p-lives" id="pl">👑 ❤️❤️❤️</div><div class="b-lives" id="bl">🍅 ❤️❤️❤️</div></div></div>
+<div class="msg" id="msg"></div><button class="restart-btn" id="rb" onclick="restart()">🔄 РЕВАНШ!</button>
+
+<script>
+let pl=3,bl=3,ga=true,pt=[],bt=[],mf=false,mb=false,ml=false,mr=false,bs=0;
+const s=new THREE.Scene();s.background=new THREE.Color(0x1a1a3e);
+const c=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,0.1,1000);c.position.set(-8,8,10);c.lookAt(-8,0,0);
+const r=new THREE.WebGLRenderer({antialias:true});r.setSize(innerWidth,innerHeight);document.body.appendChild(r.domElement);
+s.add(new THREE.AmbientLight(0x334466,0.5));const l=new THREE.DirectionalLight(0xffffff,1);l.position.set(0,15,0);s.add(l);
+const a=new THREE.Mesh(new THREE.CircleGeometry(15,32),new THREE.MeshStandardMaterial({color:0x2a2a4a}));a.rotation.x=-Math.PI/2;s.add(a);
+const pg=new THREE.Group();pg.add(new THREE.Mesh(new THREE.CapsuleGeometry(0.4,1.5,4,8),new THREE.MeshStandardMaterial({color:0x4488ff})));pg.children[0].position.y=0.9;pg.add(new THREE.Mesh(new THREE.SphereGeometry(0.3,8,8),new THREE.MeshStandardMaterial({color:0xffcc99})));pg.children[1].position.y=2;pg.position.set(-8,0,0);s.add(pg);
+const bg=new THREE.Group();bg.add(new THREE.Mesh(new THREE.CapsuleGeometry(0.4,1.5,4,8),new THREE.MeshStandardMaterial({color:0xff4444})));bg.children[0].position.y=0.9;bg.add(new THREE.Mesh(new THREE.SphereGeometry(0.3,8,8),new THREE.MeshStandardMaterial({color:0xffcc99})));bg.children[1].position.y=2;bg.position.set(8,0,0);s.add(bg);
+
+document.addEventListener('keydown',e=>{if(e.key==='w')mf=true;if(e.key==='s')mb=true;if(e.key==='a')ml=true;if(e.key==='d')mr=true;if(e.key===' '){e.preventDefault();shoot('p');}});
+document.addEventListener('keyup',e=>{if(e.key==='w')mf=false;if(e.key==='s')mb=false;if(e.key==='a')ml=false;if(e.key==='d')mr=false;});
+document.addEventListener('click',()=>shoot('p'));
+document.addEventListener('touchstart',e=>{e.preventDefault();shoot('p');});
+
+function shoot(who){
+    if(!ga)return;
+    let t=new THREE.Mesh(new THREE.SphereGeometry(0.2,8,8),new THREE.MeshStandardMaterial({color:who==='p'?0xff4444:0x4488ff}));
+    let from=who==='p'?pg.position.clone():bg.position.clone();
+    let to=who==='p'?bg.position.clone():pg.position.clone();
+    t.position.copy(from).add(new THREE.Vector3(0,1.5,0));
+    let dir=new THREE.Vector3(to.x-from.x,0.2,to.z-from.z).normalize();
+    t.velocity=dir.multiplyScalar(who==='p'?0.5:0.4);
+    if(who==='p')pt.push(t);else bt.push(t);
+    s.add(t);
+}
+
+function updateUI(){document.getElementById('pl').textContent='👑 '+'❤️'.repeat(Math.max(0,pl));document.getElementById('bl').textContent='🍅 '+'❤️'.repeat(Math.max(0,bl));}
+function endGame(w){
+    ga=false;let m=document.getElementById('msg');m.classList.add('show');
+    m.textContent=w==='p'?'👑 ШЕФ ПОБЕДИЛ!':'🍅 ТОМАТИК ПОБЕДИЛ!';
+    m.className='msg show '+(w==='p'?'win':'lose');document.getElementById('rb').classList.add('show');
+}
+function restart(){pl=3;bl=3;ga=true;pt.forEach(t=>s.remove(t));bt.forEach(t=>s.remove(t));pt=[];bt=[];pg.position.set(-8,0,0);bg.position.set(8,0,0);document.getElementById('msg').classList.remove('show');document.getElementById('rb').classList.remove('show');updateUI();}
+
+function animate(){
+    requestAnimationFrame(animate);
+    if(ga){
+        let sp=0.2;if(mf)pg.position.z-=sp;if(mb)pg.position.z+=sp;if(ml)pg.position.x-=sp;if(mr)pg.position.x+=sp;
+        let pd=Math.hypot(pg.position.x,pg.position.z);if(pd>13){pg.position.x/=pd/13;pg.position.z/=pd/13;}
+        let dx=pg.position.x-bg.position.x,dz=pg.position.z-bg.position.z,dist=Math.hypot(dx,dz);
+        if(dist>8){bg.position.x+=dx*0.03;bg.position.z+=dz*0.03;}
+        if(dist<5){bg.position.x-=dx*0.05;bg.position.z-=dz*0.05;}
+        let bd=Math.hypot(bg.position.x,bg.position.z);if(bd>13){bg.position.x/=bd/13;bg.position.z/=bd/13;}
+        bs++;if(bs>50){shoot('b');bs=0;}
+        pt.forEach((t,i)=>{t.position.add(t.velocity);if(t.position.distanceTo(bg.position)<0.8){bl--;s.remove(t);pt.splice(i,1);updateUI();if(bl<=0)endGame('p');}else if(t.position.length()>15){s.remove(t);pt.splice(i,1);}});
+        bt.forEach((t,i)=>{t.position.add(t.velocity);if(t.position.distanceTo(pg.position)<0.8){pl--;s.remove(t);bt.splice(i,1);updateUI();if(pl<=0)endGame('b');}else if(t.position.length()>15){s.remove(t);bt.splice(i,1);}});
+        c.position.x=pg.position.x;c.position.z=pg.position.z+10;c.position.y=8;c.lookAt(pg.position.x,0,pg.position.z);
+    }
+    r.render(s,c);
+}
+animate();updateUI();
+addEventListener('resize',()=>{c.aspect=innerWidth/innerHeight;c.updateProjectionMatrix();r.setSize(innerWidth,innerHeight);});
+</script>
+</body>
+</html>

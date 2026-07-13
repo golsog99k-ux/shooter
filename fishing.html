@@ -4,57 +4,96 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>🎣 TomatiK Fishing Pro</title>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
         body{background:#000;overflow:hidden;font-family:Arial;user-select:none;touch-action:manipulation;height:100vh}
         canvas{display:block}
-        .ui{position:fixed;top:15px;left:0;right:0;text-align:center;z-index:10;pointer-events:none;color:white}
-        .money{font-size:38px;font-weight:bold;color:#ffaa00;text-shadow:0 0 15px rgba(255,170,0,0.5)}
-        .catch-text{font-size:22px;color:#ff8800;margin-top:5px;min-height:35px}
-        .shop-btn{position:fixed;top:15px;right:15px;z-index:30;background:rgba(0,0,0,0.7);color:#ff8800;border:2px solid #ff8800;padding:10px 18px;border-radius:20px;font-size:14px;cursor:pointer;pointer-events:auto}
+        .ui{position:fixed;top:15px;left:0;right:0;text-align:center;z-index:10;pointer-events:none;color:white;font-size:16px}
+        .money{color:#ffaa00;font-size:20px;font-weight:bold}
+        .catch-text{color:#ff8800;font-size:16px;margin-top:5px;min-height:25px}
         .rod-info{position:fixed;bottom:15px;left:0;right:0;text-align:center;color:white;font-size:13px;z-index:10;pointer-events:none}
-        .jackpot{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);font-size:60px;font-weight:bold;color:#ffaa00;z-index:50;pointer-events:none;transition:transform 0.3s;text-shadow:0 0 30px #ff8800,0 0 60px #ff4400}
+        .shop-btn{position:fixed;top:15px;right:15px;z-index:30;background:rgba(0,0,0,0.7);color:#ff8800;border:2px solid #ff8800;padding:10px 18px;border-radius:20px;font-size:14px;cursor:pointer;pointer-events:auto}
+        .album-btn{position:fixed;top:60px;right:15px;z-index:30;background:rgba(0,0,0,0.7);color:#44aaff;border:2px solid #44aaff;padding:8px 15px;border-radius:20px;font-size:12px;cursor:pointer;pointer-events:auto}
+        .sell-btn{position:fixed;bottom:100px;left:15px;z-index:30;background:rgba(0,0,0,0.7);color:#ff8800;border:2px solid #ff8800;padding:10px 18px;border-radius:20px;font-size:14px;cursor:pointer;pointer-events:auto}
+        .bbq-btn{position:fixed;bottom:100px;right:15px;z-index:30;background:rgba(0,0,0,0.7);color:#ff4444;border:2px solid #ff4444;padding:10px 18px;border-radius:20px;font-size:14px;cursor:pointer;pointer-events:auto}
+        .crosshair{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:24px;pointer-events:none;z-index:20;color:white}
+        .click-count{position:fixed;top:40%;left:50%;transform:translate(-50%,-50%);font-size:30px;color:#ffaa00;font-weight:bold;pointer-events:none;z-index:20;display:none}
+        .jackpot{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);font-size:50px;font-weight:bold;color:#ffaa00;z-index:50;pointer-events:none;transition:transform 0.3s;text-shadow:0 0 30px #ff8800}
         .jackpot.show{transform:translate(-50%,-50%) scale(1);animation:jpAnim 2s forwards}
         @keyframes jpAnim{0%{transform:translate(-50%,-50%) scale(0) rotate(0deg)}50%{transform:translate(-50%,-50%) scale(1.5) rotate(180deg)}100%{transform:translate(-50%,-50%) scale(1) rotate(360deg);opacity:0}}
-        .cast-hint{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.6);font-size:14px;z-index:10;pointer-events:none}
-        .shop-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.95);z-index:50;display:none;align-items:center;justify-content:center;flex-direction:column;overflow-y:auto;padding:20px}
-        .shop-overlay.show{display:flex}
-        .shop-overlay h2{color:#ff8800;margin-bottom:15px}
-        .shop-overlay button{padding:12px 25px;background:#ff4444;color:white;border:none;border-radius:15px;margin:5px;cursor:pointer;font-weight:bold;font-size:13px;width:85%;max-width:300px}
-        .shop-overlay .close-btn{background:#333}
-        .shop-overlay p{color:white;font-size:12px;margin:3px 0}
-        .owned{background:#00aa44!important}
+        
+        .overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.95);z-index:50;display:none;align-items:center;justify-content:center;flex-direction:column;overflow-y:auto;padding:20px}
+        .overlay.show{display:flex}
+        .overlay h2{color:#ff8800;margin-bottom:15px}
+        .overlay button{padding:10px 20px;background:#ff4444;color:white;border:none;border-radius:15px;margin:5px;cursor:pointer;font-size:13px;width:80%;max-width:300px}
+        .overlay .close-btn{background:#333}
+        .overlay p{color:white;font-size:12px;margin:3px 0}
+        .overlay .fish-item{color:white;font-size:14px;margin:3px 0}
+        
+        .look-area{position:fixed;top:0;right:0;width:50%;height:100%;z-index:5}
+        .dpad{position:fixed;bottom:50px;left:20px;z-index:30}
+        .dpad-btn{width:40px;height:40px;background:rgba(255,255,255,0.2);border:2px solid rgba(255,255,255,0.5);color:white;font-size:16px;margin:2px;cursor:pointer;border-radius:10px}
+        .dpad-btn:active{background:rgba(255,68,68,0.6)}
     </style>
 </head>
 <body>
 
+<div class="crosshair" id="crosshair">🎣</div>
+<div class="click-count" id="clickCount"></div>
 <div class="ui">
     <div class="money" id="money">💰 0</div>
-    <div class="catch-text" id="catchText">🎣 Свайпни вниз чтобы закинуть!</div>
+    <div class="catch-text" id="catchText">🎣 Гуляй по пирсу, закидывай удочку!</div>
 </div>
-
 <div class="rod-info" id="rodInfo">🎣 Классическая удочка</div>
-<div class="cast-hint">👇 Свайп вниз = закинуть</div>
 
-<button class="shop-btn" onclick="openShop()">🛒</button>
+<button class="shop-btn" onclick="openShop()">🛒 Удочки</button>
+<button class="album-btn" onclick="openAlbum()">📖 Альбом</button>
+<button class="sell-btn" onclick="sellAllFish()">💰 Продать</button>
+<button class="bbq-btn" onclick="openBBQ()">🔥 Мангал</button>
 
 <div class="jackpot" id="jackpot">🎰 ДЖЕКПОТ!</div>
 
-<div class="shop-overlay" id="shopOverlay">
-    <h2>🛒 МАГАЗИН УДОЧЕК</h2>
+<div class="look-area" id="lookArea"></div>
+<div class="dpad" id="dpad">
+    <div style="text-align:center"><button class="dpad-btn" ontouchstart="moveStart('up')" ontouchend="moveEnd()">⬆️</button></div>
+    <div style="text-align:center">
+        <button class="dpad-btn" ontouchstart="moveStart('left')" ontouchend="moveEnd()">⬅️</button>
+        <button class="dpad-btn" ontouchstart="moveStart('down')" ontouchend="moveEnd()">⬇️</button>
+        <button class="dpad-btn" ontouchstart="moveStart('right')" ontouchend="moveEnd()">➡️</button>
+    </div>
+</div>
+
+<!-- Меню магазина удочек -->
+<div class="overlay" id="shopOverlay">
+    <h2>🛒 Магазин удочек</h2>
     <p id="shopMoney">💰 0</p>
     <button onclick="buyRod(0)">🎣 Классическая — 0💰</button>
     <button onclick="buyRod(1)">🎣 Продвинутая — 500💰</button>
     <button onclick="buyRod(2)">🎣 Профи — 2000💰</button>
     <button onclick="buyRod(3)">🎣 Легендарная — 10000💰</button>
-    <button onclick="buyRod(4)">👑 Удочка Шефа — 50000💰</button>
-    <button onclick="buyRod(5)">🍅 Chef & TomatiK — 1000000💰</button>
+    <button onclick="buyRod(4)">👑 Шефа — 50000💰</button>
+    <button onclick="buyRod(5)">🍅 Chef & TomatiK — 1M💰</button>
     <button class="close-btn" onclick="closeShop()">✕ Закрыть</button>
 </div>
 
+<!-- Меню альбома -->
+<div class="overlay" id="albumOverlay">
+    <h2>📖 Альбом рыб</h2>
+    <div id="albumContent"></div>
+    <button class="close-btn" onclick="closeAlbum()">✕ Закрыть</button>
+</div>
+
+<!-- Меню мангала -->
+<div class="overlay" id="bbqOverlay">
+    <h2>🔥 Мангал</h2>
+    <p id="bbqFish">Рыб в инвентаре: 0</p>
+    <button onclick="cookFish()">🍳 Пожарить рыбу (+50% к цене)</button>
+    <button class="close-btn" onclick="closeBBQ()">✕ Закрыть</button>
+</div>
+
 <script>
-// === ДАННЫЕ РЫБ ===
+// ====== ДАННЫЕ ======
 const fishData=[
     {name:'Карась',emoji:'🐟',chances:[30,15,5,1,0,0],reward:20,jackpot:false},
     {name:'Окунь',emoji:'🐠',chances:[50,30,15,5,0,0],reward:10,jackpot:false},
@@ -66,223 +105,246 @@ const fishData=[
     {name:'Томатик',emoji:'🍅',chances:[0,0,0,0,0,3],reward:50000,jackpot:true},
     {name:'Руша',emoji:'🐱',chances:[1,3,7,15,30,50],reward:100000,jackpot:true}
 ];
-
-let money=0,rodLevel=0,canCast=true,isCasting=false;
+let money=0,rodLevel=0,inventory=[],album={},cookedFish=0;
 const rodNames=['Классическая','Продвинутая','Профи','Легендарная','Удочка Шефа','Chef & TomatiK'];
 
-// === THREE.JS ===
+// ====== THREE.JS ======
 const scene=new THREE.Scene();
-scene.background=new THREE.Color(0x1a3a5c);
-scene.fog=new THREE.Fog(0x1a3a5c,20,60);
-
-const camera=new THREE.PerspectiveCamera(65,window.innerWidth/window.innerHeight,0.1,1000);
-camera.position.set(0,4,7);
-camera.lookAt(0,-2,-3);
-
+scene.background=new THREE.Color(0xff8844); // Закат
+scene.fog=new THREE.Fog(0xff8844,10,60);
+const camera=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,0.1,1000);
+camera.position.set(0,1.7,5);
 const renderer=new THREE.WebGLRenderer({antialias:true});
-renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.setSize(innerWidth,innerHeight);
 renderer.shadowMap.enabled=true;
-renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
-// Освещение
-scene.add(new THREE.AmbientLight(0x334466,0.4));
-const sun=new THREE.DirectionalLight(0xffddbb,1.2);
-sun.position.set(20,25,10);
+// Свет
+scene.add(new THREE.AmbientLight(0xff8866,0.6));
+const sun=new THREE.DirectionalLight(0xffaa44,1.5);
+sun.position.set(20,30,10);
 sun.castShadow=true;
-sun.shadow.mapSize.width=1024;
-sun.shadow.mapSize.height=1024;
 scene.add(sun);
 
-// Вода (реалистичная)
-const waterGeom=new THREE.PlaneGeometry(50,50,100,100);
-const waterMat=new THREE.MeshStandardMaterial({color:0x3377bb,transparent:true,opacity:0.85,metalness:0.4,roughness:0.2});
+// Вода с бликами
+const waterGeom=new THREE.PlaneGeometry(60,60,50,50);
+const waterMat=new THREE.MeshPhongMaterial({color:0x4499cc,shininess:100,specular:0xffdd88,transparent:true,opacity:0.85});
 const water=new THREE.Mesh(waterGeom,waterMat);
-water.rotation.x=-Math.PI/2;
-water.position.y=-2;
-water.receiveShadow=true;
-scene.add(water);
+water.rotation.x=-Math.PI/2;water.position.y=-2;scene.add(water);
 
 // Дно
-const floor=new THREE.Mesh(new THREE.PlaneGeometry(50,50),new THREE.MeshStandardMaterial({color:0x3a2a1a,roughness:0.9}));
-floor.rotation.x=-Math.PI/2;
-floor.position.y=-2.5;
-scene.add(floor);
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(60,60),new THREE.MeshStandardMaterial({color:0x3a2a1a}));
+floor.rotation.x=-Math.PI/2;floor.position.y=-2.5;scene.add(floor);
 
 // Пирс
-const pierWood=new THREE.Mesh(new THREE.BoxGeometry(3,0.3,6),new THREE.MeshStandardMaterial({color:0x6b4a2a,roughness:0.8}));
-pierWood.position.set(0,0,4);
-pierWood.castShadow=true;
-pierWood.receiveShadow=true;
-scene.add(pierWood);
+const pier=new THREE.Mesh(new THREE.BoxGeometry(3,0.3,8),new THREE.MeshStandardMaterial({color:0x6b4a2a}));
+pier.position.set(0,0.15,4);pier.castShadow=true;pier.receiveShadow=true;scene.add(pier);
 
-// Столбы
-for(let i=0;i<4;i++){
-    let pole=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.15,4),new THREE.MeshStandardMaterial({color:0x5a3a1a}));
-    pole.position.set(i<2?-1:1,0,i%2===0?2:6);
-    pole.castShadow=true;
-    scene.add(pole);
+// Домик рыбака
+const house=new THREE.Mesh(new THREE.BoxGeometry(3,3,3),new THREE.MeshStandardMaterial({color:0x8B4513}));
+house.position.set(-8,1.5,-3);house.castShadow=true;scene.add(house);
+const roof=new THREE.Mesh(new THREE.ConeGeometry(2.5,2,4),new THREE.MeshStandardMaterial({color:0xcc4444}));
+roof.position.set(-8,3.5,-3);scene.add(roof);
+
+// Деревья
+for(let i=0;i<10;i++){
+    let tx=(Math.random()-0.5)*20;let tz=-5-Math.random()*10;
+    let trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.3,3),new THREE.MeshStandardMaterial({color:0x5a3a1a}));
+    trunk.position.set(tx,1.5,tz);trunk.castShadow=true;scene.add(trunk);
+    let leaves=new THREE.Mesh(new THREE.ConeGeometry(1,2,6),new THREE.MeshStandardMaterial({color:0x2a5a1a}));
+    leaves.position.set(tx,3.5,tz);scene.add(leaves);
 }
 
-// Удочка
+// Чайки
+let seagulls=[];
+for(let i=0;i<5;i++){
+    let sg=new THREE.Mesh(new THREE.ConeGeometry(0.3,0.6,4),new THREE.MeshStandardMaterial({color:0xffffff}));
+    sg.position.set((Math.random()-0.5)*15,8+Math.random()*5,(Math.random()-0.5)*20);
+    sg.rotation.z=Math.PI/2;sg.velocity=new THREE.Vector3((Math.random()-0.5)*0.1,0,(Math.random()-0.5)*0.1);
+    scene.add(sg);seagulls.push(sg);
+}
+
+// Удочка (видно в руках)
 const rodGroup=new THREE.Group();
-const rodPole=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.06,4),new THREE.MeshStandardMaterial({color:0x8B4513}));
-rodPole.position.y=2;
-rodGroup.add(rodPole);
-const rodString=new THREE.Mesh(new THREE.CylinderGeometry(0.008,0.008,6),new THREE.MeshBasicMaterial({color:0xdddddd}));
-rodString.position.y=-1;
-rodGroup.add(rodString);
-rodGroup.position.set(0,0,3);
-rodGroup.rotation.x=Math.PI/5;
-scene.add(rodGroup);
+const rodPole=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.05,2),new THREE.MeshStandardMaterial({color:0x8B4513}));
+rodPole.position.y=1;rodGroup.add(rodPole);
+rodGroup.position.set(0.2,-0.4,-0.6);
+camera.add(rodGroup);
+scene.add(camera);
 
-// Камни на берегу
-for(let i=0;i<15;i++){
-    let rock=new THREE.Mesh(new THREE.IcosahedronGeometry(0.2+Math.random()*0.5,0),new THREE.MeshStandardMaterial({color:0x555555,roughness:0.9}));
-    rock.position.set((Math.random()-0.5)*20,0,(Math.random()*5)+2);
-    rock.castShadow=true;
-    rock.receiveShadow=true;
-    scene.add(rock);
+// Мангал
+const bbq=new THREE.Mesh(new THREE.BoxGeometry(1,0.5,0.5),new THREE.MeshStandardMaterial({color:0x333333}));
+bbq.position.set(6,0.3,-3);bbq.castShadow=true;scene.add(bbq);
+
+// ====== УПРАВЛЕНИЕ ======
+let moveDir={x:0,z:0},isCasting=false,clickCount=0,currentFish=null;
+const lookArea=document.getElementById('lookArea');
+lookArea.addEventListener('touchmove',e=>{
+    e.preventDefault();
+    let cx=(e.touches[0].clientX/innerWidth)*2-1;
+    let cy=-(e.touches[0].clientY/innerHeight)*2+1;
+    camera.rotation.y+=cx*0.03;
+    camera.rotation.x=Math.max(-0.5,Math.min(0.3,camera.rotation.x+cy*0.02));
+});
+
+document.addEventListener('mousemove',e=>{
+    let cx=(e.clientX/innerWidth)*2-1;
+    let cy=-(e.clientY/innerHeight)*2+1;
+    camera.rotation.y+=cx*0.02;
+    camera.rotation.x=Math.max(-0.5,Math.min(0.3,camera.rotation.x+cy*0.015));
+});
+
+function moveStart(d){if(d==='up')moveDir.z=-0.3;if(d==='down')moveDir.z=0.3;if(d==='left')moveDir.x=-0.3;if(d==='right')moveDir.x=0.3;}
+function moveEnd(){moveDir.x=0;moveDir.z=0;}
+
+document.addEventListener('keydown',e=>{
+    let s=0.3;if(e.key==='w')moveDir.z=-s;if(e.key==='s')moveDir.z=s;
+    if(e.key==='a')moveDir.x=-s;if(e.key==='d')moveDir.x=s;
+    if(e.key===' '||e.key==='Spacebar'){e.preventDefault();startFishing();}
+});
+document.addEventListener('keyup',e=>{
+    if(e.key==='w'||e.key==='s')moveDir.z=0;
+    if(e.key==='a'||e.key==='d')moveDir.x=0;
+});
+
+// Рыбалка
+document.addEventListener('click',startFishing);
+document.addEventListener('touchstart',e=>{e.preventDefault();startFishing();});
+
+function startFishing(){
+    if(isCasting)return;
+    if(camera.position.z<3||camera.position.z>5||Math.abs(camera.position.x)>1.5)return; // Не на пирсе
+    isCasting=true;
+    clickCount=0;
+    document.getElementById('catchText').textContent='🎣 Клюёт! Кликай 10 раз!';
+    document.getElementById('clickCount').style.display='block';
+    document.getElementById('clickCount').textContent='0/10';
 }
 
-// === УПРАВЛЕНИЕ КАМЕРОЙ ===
-let camAngle=0,camHeight=4,camDist=7;
-document.addEventListener('mousemove',e=>{
-    let cx=(e.clientX/window.innerWidth)*2-1;
-    let cy=-(e.clientY/window.innerHeight)*2+1;
-    camAngle=cx*0.5;
-    camHeight=4+cy*1.5;
-});
-
-document.addEventListener('touchmove',e=>{
-    if(isCasting)return;
-    e.preventDefault();
-    let cx=(e.touches[0].clientX/window.innerWidth)*2-1;
-    let cy=-(e.touches[0].clientY/window.innerHeight)*2+1;
-    camAngle=cx*0.5;
-    camHeight=4+cy*1.5;
-});
-
-// === ЗАКИДЫВАНИЕ СВАЙПОМ ===
-let touchStartY=0;
-document.addEventListener('touchstart',e=>{
-    touchStartY=e.touches[0].clientY;
-});
-
-document.addEventListener('touchend',e=>{
-    if(isCasting||!canCast)return;
-    let diff=touchStartY-e.changedTouches[0].clientY;
-    if(diff<-50){
-        castRod();
+document.addEventListener('click',()=>{
+    if(!isCasting)return;
+    clickCount++;
+    document.getElementById('clickCount').textContent=clickCount+'/10';
+    if(clickCount>=10){
+        catchFish();
+        isCasting=false;
+        document.getElementById('clickCount').style.display='none';
     }
 });
-
-// === ФУНКЦИИ ===
-function castRod(){
-    if(!canCast||isCasting)return;
-    isCasting=true;
-    canCast=false;
-    document.getElementById('catchText').textContent='⏳ Закинуто... Ждём...';
-    
-    // Анимация закидывания
-    rodGroup.rotation.x=Math.PI/3;
-    setTimeout(()=>rodGroup.rotation.x=Math.PI/5,500);
-    
-    setTimeout(()=>{
-        let fish=catchFish();
-        document.getElementById('catchText').textContent='🐟 '+fish.emoji+' '+fish.name+'! +'+fish.reward+'💰';
-        money+=fish.reward;
-        updateUI();
-        isCasting=false;
-        canCast=true;
-        
-        if(fish.jackpot){
-            showJackpot(fish);
-        }
-    },1500+Math.random()*3000);
-}
 
 function catchFish(){
-    let rand=Math.random()*100;
-    let cumulative=0;
-    for(let i=fishData.length-1;i>=0;i--){
-        cumulative+=fishData[i].chances[rodLevel];
-        if(rand<cumulative)return fishData[i];
-    }
+    let fish=getRandomFish();
+    inventory.push({...fish,cooked:false});
+    if(!album[fish.name])album[fish.name]=0;
+    album[fish.name]++;
+    document.getElementById('catchText').textContent='🐟 Поймано: '+fish.emoji+' '+fish.name+'! +'+fish.reward+'💰';
+    money+=fish.reward;
+    
+    // Анимация удочки с уловом
+    let catchRod=new THREE.Mesh(new THREE.SphereGeometry(0.3,8,8),new THREE.MeshStandardMaterial({color:0xff4444}));
+    catchRod.position.copy(camera.position).add(new THREE.Vector3(0,0,-2));
+    scene.add(catchRod);
+    setTimeout(()=>scene.remove(catchRod),1500);
+    
+    if(fish.jackpot)showJackpot(fish);
+    updateUI();
+}
+
+function getRandomFish(){
+    let rand=Math.random()*100,cum=0;
+    for(let i=fishData.length-1;i>=0;i--){cum+=fishData[i].chances[rodLevel];if(rand<cum)return fishData[i];}
     return fishData[0];
+}
+
+// ====== ЭКОНОМИКА ======
+function sellAllFish(){
+    if(inventory.length===0){alert('Нет рыбы для продажи!');return;}
+    let total=0;
+    inventory.forEach(f=>{total+=f.cooked?Math.floor(f.reward*1.5):f.reward;});
+    money+=total;inventory=[];
+    alert('✅ Продано! +'+total+'💰');
+    updateUI();
+}
+
+function cookFish(){
+    if(inventory.length===0){alert('Нет рыбы!');return;}
+    let cooked=0;
+    inventory.forEach(f=>{if(!f.cooked){f.cooked=true;cooked++;}});
+    alert('🍳 Пожарено: '+cooked+' рыб! (+50% к цене)');
+    updateUI();
 }
 
 function showJackpot(fish){
     let jp=document.getElementById('jackpot');
     jp.textContent='🎰 ДЖЕКПОТ! '+fish.emoji+' '+fish.name+'!';
-    jp.classList.remove('show');
-    void jp.offsetWidth;
-    jp.classList.add('show');
+    jp.classList.remove('show');void jp.offsetWidth;jp.classList.add('show');
     setTimeout(()=>jp.classList.remove('show'),2000);
+}
+
+// ====== МЕНЮ ======
+function openShop(){document.getElementById('shopOverlay').classList.add('show');document.getElementById('shopMoney').textContent='💰 '+money;}
+function closeShop(){document.getElementById('shopOverlay').classList.remove('show');}
+function openAlbum(){
+    document.getElementById('albumOverlay').classList.add('show');
+    let html='';
+    for(let[name,count]of Object.entries(album)){html+='<div class="fish-item">'+fishData.find(f=>f.name===name).emoji+' '+name+': '+count+' шт.</div>';}
+    if(!html)html='<p style="color:#888">Пока пусто...</p>';
+    document.getElementById('albumContent').innerHTML=html;
+}
+function closeAlbum(){document.getElementById('albumOverlay').classList.remove('show');}
+function openBBQ(){document.getElementById('bbqOverlay').classList.add('show');document.getElementById('bbqFish').textContent='Рыб в инвентаре: '+inventory.length;}
+function closeBBQ(){document.getElementById('bbqOverlay').classList.remove('show');}
+
+function buyRod(level){
+    let prices=[0,500,2000,10000,50000,1000000];
+    if(level<=rodLevel){alert('Уже есть лучше!');return;}
+    if(money>=prices[level]){money-=prices[level];rodLevel=level;updateUI();closeShop();alert('✅ Куплена: '+rodNames[rodLevel]);}
+    else alert('❌ Не хватает!');
 }
 
 function updateUI(){
     document.getElementById('money').textContent='💰 '+money.toLocaleString();
-    document.getElementById('rodInfo').textContent='🎣 '+rodNames[rodLevel]+' удочка';
+    document.getElementById('rodInfo').textContent='🎣 '+rodNames[rodLevel];
 }
 
-function openShop(){
-    document.getElementById('shopOverlay').classList.add('show');
-    document.getElementById('shopMoney').textContent='💰 '+money.toLocaleString();
-    updateShopButtons();
-}
-
-function closeShop(){
-    document.getElementById('shopOverlay').classList.remove('show');
-}
-
-function buyRod(level){
-    let prices=[0,500,2000,10000,50000,1000000];
-    if(level<=rodLevel){alert('❌ У вас уже есть удочка лучше!');return;}
-    if(money>=prices[level]){
-        money-=prices[level];
-        rodLevel=level;
-        updateUI();
-        updateShopButtons();
-        alert('✅ Куплена: '+rodNames[rodLevel]+'!');
-    }else{
-        alert('❌ Не хватает! Нужно: '+prices[level].toLocaleString()+'💰');
-    }
-}
-
-function updateShopButtons(){
-    let btns=document.querySelectorAll('.shop-overlay button:not(.close-btn)');
-    btns.forEach((btn,i)=>{
-        if(i<=rodLevel)btn.classList.add('owned');
-        else btn.classList.remove('owned');
-    });
-}
-
+// ====== АНИМАЦИЯ ======
 function animate(){
     requestAnimationFrame(animate);
     
-    // Анимация воды
-    water.position.z+=0.03;
-    if(water.position.z>5)water.position.z=0;
+    // Движение игрока
+    if(moveDir.x!==0||moveDir.z!==0){
+        let dir=new THREE.Vector3(moveDir.x,0,moveDir.z);
+        dir.applyQuaternion(camera.quaternion);
+        camera.position.add(dir);
+        camera.position.y=1.7;
+        if(Math.abs(camera.position.x)>10||Math.abs(camera.position.z)>15){
+            camera.position.sub(dir);
+        }
+    }
     
-    // Камера
-    camera.position.x=Math.sin(camAngle)*camDist;
-    camera.position.z=Math.cos(camAngle)*camDist;
-    camera.position.y=camHeight;
-    camera.lookAt(0,-2,-3);
+    // Анимация воды (блики)
+    water.position.z+=0.02;if(water.position.z>5)water.position.z=0;
+    
+    // Чайки
+    seagulls.forEach(s=>{
+        s.position.add(s.velocity);
+        if(Math.abs(s.position.x)>15)s.velocity.x*=-1;
+        if(Math.abs(s.position.z)>15)s.velocity.z*=-1;
+        s.position.y+=Math.sin(Date.now()*0.003)*0.05;
+    });
+    
+    // Радуга (редко)
+    if(Math.random()<0.0001){
+        let rainbow=new THREE.Mesh(new THREE.TorusGeometry(10,0.5,8,32),new THREE.MeshBasicMaterial({color:0xff8844,transparent:true,opacity:0.3}));
+        rainbow.position.y=15;scene.add(rainbow);
+        setTimeout(()=>scene.remove(rainbow),5000);
+    }
     
     renderer.render(scene,camera);
 }
 animate();
-
 updateUI();
-updateShopButtons();
-
-window.addEventListener('resize',()=>{
-    camera.aspect=window.innerWidth/window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth,window.innerHeight);
-});
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
 </script>
 </body>
-</html>
+    </html>
